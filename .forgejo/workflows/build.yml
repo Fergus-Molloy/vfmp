@@ -1,0 +1,37 @@
+on: [push]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - name: golangci-lint
+        uses: https://github.com/golangci/golangci-lint-action@v9
+        with:
+          version: v2.8
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - run: go build main.go
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - run: go run gotest.tools/gotestsum@latest --junitfile unit-tests.xml --format pkgname
+      - name: Test Summary
+        uses: https://github.com/test-summary/action@v2
+        with:
+          paths: "unit-tests.xml"
+        if: always()
