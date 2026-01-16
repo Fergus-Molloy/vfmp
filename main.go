@@ -8,11 +8,21 @@ import (
 	"net/http"
 )
 
+// set at compile time by ldflags
+var version string
+
 func main() {
 
 	http.HandleFunc("/control/healthcheck", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+	http.HandleFunc("/control/version", func(w http.ResponseWriter, r *http.Request) {
+		if version == "" {
+			version = "dev"
+		}
+		w.Write([]byte(version))
+	})
+
 	http.HandleFunc("/echo", func(w http.ResponseWriter, r *http.Request) {
 		message := make([]byte, 50)
 		_, err := r.Body.Read(message)

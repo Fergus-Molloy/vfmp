@@ -8,7 +8,8 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 go build -o vfmp
+ARG VERSION=dev
+RUN CGO_ENABLED=0 go build -ldflags "-X main.version=$VERSION" -o vfmp
 
 FROM scratch AS prod
 

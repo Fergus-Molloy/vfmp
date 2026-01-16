@@ -49,9 +49,11 @@
               self.formatter.${system}
 
               # Other packages
+              just
               go
               gopls
               golangci-lint
+              gotestsum
             ];
 
             # Set any environment variables for your development environment
