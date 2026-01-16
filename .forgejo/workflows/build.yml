@@ -25,7 +25,8 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: stable
-      - run: go build main.go
+      - name: Build
+        run: go build main.go
 
   test:
     runs-on: ubuntu-latest
@@ -34,9 +35,5 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: stable
-      - run: go run gotest.tools/gotestsum@latest --junitfile unit-tests.xml --format pkgname
-      - name: Test Summary
-        uses: https://github.com/test-summary/action@v2
-        with:
-          paths: "unit-tests.xml"
-        if: always()
+      - name: Run tests
+        run: go run gotest.tools/gotestsum@latest --format=testname
