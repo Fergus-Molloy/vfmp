@@ -7,6 +7,9 @@ version := `git describe --tags --match='v[0-9].[0-9].[0-9]' HEAD 2>/dev/null ||
 version:
 	echo {{ version }}
 
+lint:
+	golangci-lint run
+
 build:
 	go build -o vfmp
 

@@ -20,7 +20,7 @@ func main() {
 		if version == "" {
 			version = "dev"
 		}
-		w.Write([]byte(version))
+		_, _ = w.Write([]byte(version))
 	})
 
 	http.HandleFunc("/echo", func(w http.ResponseWriter, r *http.Request) {
@@ -36,8 +36,10 @@ func main() {
 		msg := bytes.Trim(message, "\x00")
 		slog.Info("echoing message", "msg", string(msg))
 
-		w.Write(msg)
+		_, _ = w.Write(msg)
 	})
 
-	http.ListenAndServe(":8080", nil)
+	if err := http.ListenAndServe(":8080", nil); err != http.ErrServerClosed {
+		slog.Error("error serving http server", "err", err)
+	}
 }
