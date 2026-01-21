@@ -1,9 +1,7 @@
 package http
 
 import (
-	"context"
 	"log/slog"
-	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"sync"
