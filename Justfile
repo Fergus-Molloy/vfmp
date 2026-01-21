@@ -16,6 +16,9 @@ build:
 test:
 	gotestsum --format=testname -- ./...
 
+run: build
+	./vfmp
+
 docker:
 	docker build --build-arg VERSION={{version}} -t vfmp .
 
