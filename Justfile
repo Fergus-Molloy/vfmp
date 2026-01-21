@@ -11,7 +11,7 @@ lint:
 	golangci-lint run
 
 build:
-	go build -o vfmp
+	go build -o vfmp -ldflags "-X fergus.molloy.xyz/vfmp/internal/version.Version={{version}}"
 
 test:
 	gotestsum --format=testname -- ./...

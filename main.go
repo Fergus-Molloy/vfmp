@@ -1,45 +1,40 @@
 package main
 
 import (
-	"bytes"
-	"errors"
-	"io"
+	"context"
 	"log/slog"
-	"net/http"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
+
+	"fergus.molloy.xyz/vfmp/internal/http"
 )
 
-// set at compile time by ldflags
-var version string
-
 func main() {
+	slog.Info("starting vfmp")
 
-	http.HandleFunc("/control/healthcheck", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-	http.HandleFunc("/control/version", func(w http.ResponseWriter, r *http.Request) {
-		if version == "" {
-			version = "dev"
-		}
-		_, _ = w.Write([]byte(version))
-	})
+	signal, sigCancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer sigCancel()
 
-	http.HandleFunc("/echo", func(w http.ResponseWriter, r *http.Request) {
-		message := make([]byte, 50)
-		_, err := r.Body.Read(message)
-		defer r.Body.Close()
+	wg := new(sync.WaitGroup)
 
-		if err != nil && !errors.Is(err, io.EOF) {
-			slog.Error("could not read body", "err", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		msg := bytes.Trim(message, "\x00")
-		slog.Info("echoing message", "msg", string(msg))
+	wg.Add(1)
+	srv := http.StartHttpServer(wg, ":8080")
 
-		_, _ = w.Write(msg)
-	})
+	wg.Add(1)
+	pprof := http.StartPprofServer(wg, ":5050")
 
-	if err := http.ListenAndServe(":8080", nil); err != http.ErrServerClosed {
-		slog.Error("error serving http server", "err", err)
-	}
+	<-signal.Done()
+	slog.Warn("shutting down vfmp")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	go http.ShutdownServer(srv, shutdownCtx)
+	go http.ShutdownServer(pprof, shutdownCtx)
+
+	wg.Wait()
+	slog.Warn("shut down complete")
 }

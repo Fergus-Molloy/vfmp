@@ -9,7 +9,7 @@ RUN go mod download
 COPY . .
 
 ARG VERSION=dev
-RUN CGO_ENABLED=0 go build -ldflags "-X main.version=$VERSION" -o vfmp
+RUN CGO_ENABLED=0 go build -o vfmp -ldflags "-X fergus.molloy.xyz/vfmp/internal/version.Version=$VERSION"
 
 FROM scratch AS prod
 
