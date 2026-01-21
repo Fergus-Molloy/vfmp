@@ -12,15 +12,19 @@ import (
 
 // StartHttpServer creates and starts a [http.Server]. Returns the server so that shutdown can be called.
 func StartHttpServer(wg *sync.WaitGroup, config *config.Config) *http.Server {
-	mux := http.NewServeMux()
 	srv := &http.Server{
 		Addr:         config.HTTPAddr,
 		ReadTimeout:  config.ReadTimeout,
 		WriteTimeout: config.WriteTimeout,
-		Handler:      mux,
 	}
 
+	mux := http.NewServeMux()
 	registerHandlers(mux)
+
+	var h http.Handler = mux
+	h = logRequest(h)
+	h = addCorrelationID(h)
+	srv.Handler = h
 
 	go serveHttpServer(wg, srv)
 

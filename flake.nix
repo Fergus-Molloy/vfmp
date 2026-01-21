@@ -55,6 +55,7 @@
               golangci-lint
               golangci-lint-langserver
               gotestsum
+              watchexec
             ];
 
             # Set any environment variables for your development environment

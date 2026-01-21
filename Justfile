@@ -1,6 +1,6 @@
 set unstable
 
-default: build
+default: build lint
 
 version := `git describe --tags --match='v[0-9].[0-9].[0-9]' HEAD 2>/dev/null || true`
 
@@ -15,6 +15,9 @@ build:
 
 unit *flags:
 	gotestsum --format=testname -- ./internal/... {{flags}}
+
+watch:
+	watchexec -r -e go,mod,sum -- just run
 
 [script]
 integration *flags:
