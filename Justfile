@@ -13,11 +13,32 @@ lint:
 build:
 	go build -o vfmp -ldflags "-X fergus.molloy.xyz/vfmp/internal/version.Version={{version}}"
 
-test:
-	gotestsum --format=testname -- ./...
+unit *flags:
+	gotestsum --format=testname -- ./internal/... {{flags}}
 
-run: build
-	./vfmp
+[script]
+integration *flags:
+	set -euo pipefail
+
+	just build
+	./vfmp -config "config.test.yml" > logs/integration.log 2>&1 &
+	PID=$!
+	trap "kill -s SIGTERM $PID 2>/dev/null || true" EXIT
+
+	sleep 1 # wait for server to start
+
+	gotestsum --format=testname -- ./tests/... {{flags}}
+	kill $PID 2>/dev/null || true
+
+test: unit integration
+
+[script]
+run config="": build
+	if [ -z "{{config}}" ]; then
+		./vfmp 2>&1 | tee logs/vfmp.log
+	else 
+		./vfmp -config {{config}} 2>&1 | tee logs/vfmp.log
+	fi
 
 docker:
 	docker build --build-arg VERSION={{version}} -t vfmp .

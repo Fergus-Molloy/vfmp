@@ -1,0 +1,11 @@
+http_addr: "localhost:8081"
+pprof_addr: ""
+
+# HTTP timeouts
+read_timeout: 10s
+write_timeout: 10s
+
+# Graceful shutdown timeout
+shutdown_timeout: 10s
+
+log_level: debug

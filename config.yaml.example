@@ -1,0 +1,18 @@
+# Example configuration file for vfmp
+# Copy to config.yaml and modify as needed
+
+# HTTP server address
+http_addr: ":8080"
+
+# Pprof debugging server address
+pprof_addr: ":5050"
+
+# HTTP timeouts
+read_timeout: 10s
+write_timeout: 10s
+
+# Graceful shutdown timeout
+shutdown_timeout: 10s
+
+# Log level: debug, info, warn, error
+log_level: info
