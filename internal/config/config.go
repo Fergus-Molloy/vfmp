@@ -1,12 +1,18 @@
 package config
 
 import (
+	"flag"
 	"fmt"
 	"log/slog"
 	"os"
 	"time"
 
 	"gopkg.in/yaml.v3"
+)
+
+var (
+	configPath string
+	logPath    string
 )
 
 // Config holds all configuration for the vfmp service
@@ -17,6 +23,13 @@ type Config struct {
 	WriteTimeout    time.Duration `yaml:"write_timeout"`
 	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
 	LogLevel        string        `yaml:"log_level"`
+	LogPath         string        `yaml:"log_path"`
+}
+
+func (c *Config) applyFlagOverrides() {
+	if logPath != "" {
+		c.LogPath = logPath
+	}
 }
 
 // Load reads configuration from file and environment variables.
@@ -24,7 +37,7 @@ type Config struct {
 // 1. Environment variables
 // 2. Config file
 // 3. Defaults
-func Load(configPath string) (*Config, error) {
+func Load() (*Config, error) {
 	cfg := &Config{
 		HTTPAddr:        ":8080",
 		PprofAddr:       ":5050",
@@ -32,7 +45,10 @@ func Load(configPath string) (*Config, error) {
 		WriteTimeout:    10 * time.Second,
 		ShutdownTimeout: 10 * time.Second,
 		LogLevel:        "info",
+		LogPath:         "",
 	}
+
+	configureFlags()
 
 	if configPath != "" {
 		if err := cfg.loadFromFile(configPath); err != nil {
@@ -41,9 +57,15 @@ func Load(configPath string) (*Config, error) {
 	}
 
 	cfg.applyEnvOverrides()
+	cfg.applyFlagOverrides()
 
-	slog.Info("loaded configuration", "cfg", cfg)
 	return cfg, nil
+}
+
+func configureFlags() {
+	flag.StringVar(&configPath, "config", "", "optional path to config file to use")
+	flag.StringVar(&logPath, "log-path", "", "optional path to log to")
+	flag.Parse()
 }
 
 func (c *Config) loadFromFile(path string) error {
@@ -73,6 +95,9 @@ func (c *Config) applyEnvOverrides() {
 	}
 	if val := os.Getenv("LOG_LEVEL"); val != "" {
 		c.LogLevel = val
+	}
+	if val := os.Getenv("LOG_PATH"); val != "" {
+		c.LogPath = val
 	}
 	if val := os.Getenv("READ_TIMEOUT"); val != "" {
 		if d, err := time.ParseDuration(val); err == nil {

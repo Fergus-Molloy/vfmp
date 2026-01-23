@@ -38,9 +38,9 @@ test: unit integration
 [script]
 run config="": build
 	if [ -z "{{config}}" ]; then
-		./vfmp 2>&1 | tee logs/vfmp.log
-	else 
-		./vfmp -config {{config}} 2>&1 | tee logs/vfmp.log
+		./vfmp -log-path logs/vfmp.log
+	else
+		./vfmp -log-path logs/vfmp.log -config "{{config}}"
 	fi
 
 docker:

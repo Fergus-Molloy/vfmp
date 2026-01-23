@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -11,34 +10,23 @@ import (
 
 	"fergus.molloy.xyz/vfmp/internal/config"
 	"fergus.molloy.xyz/vfmp/internal/http"
-)
-
-var (
-	configPath string
+	"fergus.molloy.xyz/vfmp/internal/logger"
 )
 
 func main() {
-	flag.StringVar(&configPath, "config", "", "path to config file to use")
-	flag.Parse()
-
-	config, err := config.Load(configPath)
+	config, err := config.Load()
 	if err != nil {
 		slog.Error("error loading config", "err", err)
 		os.Exit(1)
 	}
 
-	var level slog.Level
-	switch config.LogLevel {
-	case "debug":
-		level = slog.LevelDebug
-	case "info":
-		level = slog.LevelInfo
-	case "warn":
-		level = slog.LevelWarn
-	default:
-		level = slog.LevelInfo
+	err = configureLogger(config)
+	if err != nil {
+		slog.Error("could not configure logger", "err", err)
+		os.Exit(1)
 	}
-	slog.SetLogLoggerLevel(level)
+
+	slog.Info("loaded configuration", "cfg", config)
 
 	slog.Info("starting vfmp")
 
@@ -63,4 +51,36 @@ func main() {
 
 	wg.Wait()
 	slog.Warn("shut down complete")
+}
+
+func configureLogger(cfg *config.Config) error {
+	var level slog.Level
+	switch cfg.LogLevel {
+	case "debug":
+		level = slog.LevelDebug
+	case "info":
+		level = slog.LevelInfo
+	case "warn":
+		level = slog.LevelWarn
+	default:
+		level = slog.LevelInfo
+	}
+
+	if cfg.LogPath == "" {
+		slog.SetLogLoggerLevel(level)
+		return nil
+	}
+
+	file, err := os.Create(cfg.LogPath)
+	if err != nil {
+		return err
+	}
+
+	logger := logger.NewTeeLogger(
+		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level}),
+		slog.NewTextHandler(file, &slog.HandlerOptions{Level: level}),
+	)
+	slog.SetDefault(logger)
+
+	return nil
 }
