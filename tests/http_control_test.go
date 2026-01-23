@@ -28,3 +28,7 @@ func TestHealthCheck(t *testing.T) {
 		t.Fatalf("service was not healthy: %d", resp.StatusCode)
 	}
 }
+
+func TestFail(t *testing.T) {
+	t.Fatalf("test fail mechanism")
+}

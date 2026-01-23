@@ -54,7 +54,7 @@ jobs:
         run: |
           go run main.go -config "config.test.yml" > vfmp.log 2>&1 &
           go run gotest.tools/gotestsum@latest --format=testname ./tests/... -config "../config.test.yml"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v3
         if: failure()
         with:
           name: vfmp.log
