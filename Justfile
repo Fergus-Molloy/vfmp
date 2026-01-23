@@ -30,7 +30,7 @@ integration *flags:
 
 	sleep 1 # wait for server to start
 
-	gotestsum --format=testname -- ./tests/... {{flags}}
+	gotestsum --format=testname ./tests/... -config "../config.test.yml" {{flags}}
 	kill $PID 2>/dev/null || true
 
 test: unit integration

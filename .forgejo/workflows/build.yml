@@ -48,7 +48,7 @@ jobs:
       - name: Start service
         run: go run main.go -config "config.test.yml" -log-path vfmp.log &
       - name: Run integration tests
-        run: go run gotest.tools/gotestsum@latest --format=testname ./tests/...
+        run: go run gotest.tools/gotestsum@latest --format=testname ./tests/... -config-path "../config.test.yml"
       - uses: actions/upload-artifact@v6
         with:
           name: vfmp.log

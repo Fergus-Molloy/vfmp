@@ -9,7 +9,7 @@ import (
 
 func getTestConfig(t *testing.T) *config.Config {
 	t.Helper()
-	cfg, err := config.Load("../config.test.yml")
+	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}

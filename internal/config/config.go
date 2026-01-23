@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	configPath string
-	logPath    string
+	ConfigPath = flag.String("config", "", "optional config file")
+	logPath    = flag.String("log-path", "", "optional path to log to")
 )
 
 // Config holds all configuration for the vfmp service
@@ -27,8 +27,8 @@ type Config struct {
 }
 
 func (c *Config) applyFlagOverrides() {
-	if logPath != "" {
-		c.LogPath = logPath
+	if *logPath != "" {
+		c.LogPath = *logPath
 	}
 }
 
@@ -50,8 +50,8 @@ func Load() (*Config, error) {
 
 	configureFlags()
 
-	if configPath != "" {
-		if err := cfg.loadFromFile(configPath); err != nil {
+	if *ConfigPath != "" {
+		if err := cfg.loadFromFile(*ConfigPath); err != nil {
 			return cfg, fmt.Errorf("loading config file: %w", err)
 		}
 	}
@@ -63,8 +63,6 @@ func Load() (*Config, error) {
 }
 
 func configureFlags() {
-	flag.StringVar(&configPath, "config", "", "optional path to config file to use")
-	flag.StringVar(&logPath, "log-path", "", "optional path to log to")
 	flag.Parse()
 }
 
