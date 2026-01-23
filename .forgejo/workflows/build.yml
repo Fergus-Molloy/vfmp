@@ -28,12 +28,28 @@ jobs:
       - name: Build
         run: go build -o vfmp
 
-  test:
+  unit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v6
         with:
           go-version: stable
-      - name: Run tests
-        run: go run gotest.tools/gotestsum@latest --format=testname
+      - name: Run unit tests
+        run: go run gotest.tools/gotestsum@latest --format=testname ./internal/...
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - name: Start service
+        run: go run main.go -config "config.test.yml" -log-path vfmp.log &
+      - name: Run integration tests
+        run: go run gotest.tools/gotestsum@latest --format=testname ./tests/...
+      - uses: actions/upload-artifact@v6
+        with:
+          name: vfmp.log
+          path: vfmp.log
