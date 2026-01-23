@@ -50,11 +50,12 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: stable
-      - name: Start service
-        run: go run main.go -config "config.test.yml" -log-path vfmp.log &
       - name: Run integration tests
-        run: go run gotest.tools/gotestsum@latest --format=testname ./tests/... -config-path "../config.test.yml"
-      - uses: actions/upload-artifact@v6
+        run: |
+          go run main.go -config "config.test.yml" > vfmp.log 2>&1 &
+          go run gotest.tools/gotestsum@latest --format=testname ./tests/... -config "../config.test.yml"
+      - uses: actions/upload-artifact@v4
+        if: failure()
         with:
           name: vfmp.log
           path: vfmp.log
@@ -62,6 +63,11 @@ jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
     if: ${{ startsWith(forgejo.ref , 'refs/tags/v') }}
+    needs:
+      - lint
+      - build
+      - unit
+      - integration
     steps:
       - uses: actions/checkout@v4
       - uses: docker/login-action@v3
