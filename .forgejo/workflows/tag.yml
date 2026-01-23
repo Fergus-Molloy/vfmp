@@ -19,10 +19,12 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - uses: docker/metadata-action@v4
+        id: meta
         with:
           images: ${{ env.REGISTRY }}/${{ vars.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
+
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
@@ -31,3 +33,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - uses: https://code.forgejo.org/forgejo/upload-artifact@v4
+        if: always()
+        with:
+          path: /tmp/docker-actions-toolkit-*/metadata-file
