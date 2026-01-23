@@ -34,8 +34,3 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-
-      - uses: https://code.forgejo.org/forgejo/upload-artifact@v4
-        if: always()
-        with:
-          path: /tmp/docker-actions-toolkit-*/metadata-file
