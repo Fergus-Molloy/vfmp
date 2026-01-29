@@ -43,6 +43,14 @@ run config="": build
 		./vfmp -log-path logs/vfmp.log -config "{{config}}"
 	fi
 
+[script]
+client config="":
+	if [ -z "{{config}}" ]; then
+		go run client/main.go localhost:9090 test
+	else
+		go run client/main.go -config "{{config}}"
+	fi
+
 docker:
 	docker build --build-arg VERSION={{version}} -t vfmp .
 

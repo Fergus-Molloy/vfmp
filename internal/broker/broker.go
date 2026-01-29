@@ -16,8 +16,8 @@ type Broker struct {
 
 func (b *Broker) awaitMessages(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
+
 	for {
-		slog.Info("awaiting messages")
 		select {
 		case m := <-b.MsgChan:
 			q := b.getOrCreateTopic(ctx, m.Topic)
@@ -32,6 +32,7 @@ func (b *Broker) awaitMessages(ctx context.Context, wg *sync.WaitGroup) {
 func (b *Broker) getOrCreateTopic(ctx context.Context, topic string) *Queue {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
 	q, ok := b.topics[topic]
 	if !ok {
 		slog.Info("creating new queue", "topic", topic)

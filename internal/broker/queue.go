@@ -31,14 +31,19 @@ func (q *Queue) sendMessages(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		default:
+			q.mu.Lock()
 			elem := q.list.PopFront()
 			if elem != nil {
 				q.MsgChan <- elem.Value
 			}
+			q.mu.Unlock()
 		}
 	}
 }
 
 func (q *Queue) Append(msg model.Message) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
 	q.list.PushBack(msg)
 }

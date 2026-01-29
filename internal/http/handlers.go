@@ -45,8 +45,7 @@ func registerHandlers(mux *http.ServeMux, broker *broker.Broker) {
 		topic := r.PathValue("topic")
 		correlationID := r.Header.Get("X-Correlation-ID")
 
-		slog.Info("new message", "len", len(msg), "topic", topic, "correlationID", correlationID)
+		slog.Info("new message", "bytes", len(msg), "topic", topic, "correlationID", correlationID)
 		broker.MsgChan <- model.NewMessage(msg, topic, correlationID)
-
 	})
 }

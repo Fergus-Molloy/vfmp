@@ -108,7 +108,7 @@ func startClientReader(client net.Conn, read chan []byte, ctx context.Context, l
 		if err != nil {
 			switch {
 			case os.IsTimeout(err) && contextIsDone(ctx), err == io.EOF, errors.Is(err, net.ErrClosed):
-				logger.Warn("closing client", "reason", err)
+				logger.Warn("closing client", "err", err)
 				return
 			case os.IsTimeout(err):
 				continue
@@ -120,8 +120,8 @@ func startClientReader(client net.Conn, read chan []byte, ctx context.Context, l
 		msg, err := readN(client, int(messageSize))
 		if err != nil {
 			switch {
-			case os.IsTimeout(err) && contextIsDone(ctx), err == io.EOF:
-				logger.Warn("closing client", "reason", err)
+			case os.IsTimeout(err) && contextIsDone(ctx), err == io.EOF, errors.Is(err, net.ErrClosed):
+				logger.Warn("closing client", "err", err)
 				return
 			case os.IsTimeout(err):
 				continue
@@ -130,7 +130,7 @@ func startClientReader(client net.Conn, read chan []byte, ctx context.Context, l
 			}
 		}
 
-		logger.Info("read message from tcp client", "bytes", len(msg), "data", msg)
+		logger.Info("read message from tcp client", "bytes", len(msg))
 
 		read <- msg
 	}
@@ -171,10 +171,9 @@ func startClientWriter(client net.Conn, write chan []byte, ctx context.Context, 
 		select {
 		case data := <-write:
 			d := prependSize(data)
-			logger.Debug("writing data to tcp client", "data", d)
 			_, err := client.Write(d)
 			if err != nil {
-				logger.Error("failed to write to tcp client", "err", err)
+				logger.Error("failed to write to tcp client", "err", err, "data", d)
 			}
 		case <-ctx.Done():
 			return
