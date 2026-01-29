@@ -17,6 +17,7 @@ var (
 
 // Config holds all configuration for the vfmp service
 type Config struct {
+	TCPAddr         string        `yaml:"tcp_addr"`
 	HTTPAddr        string        `yaml:"http_addr"`
 	PprofAddr       string        `yaml:"pprof_addr"`
 	ReadTimeout     time.Duration `yaml:"read_timeout"`
@@ -39,12 +40,13 @@ func (c *Config) applyFlagOverrides() {
 // 3. Defaults
 func Load() (*Config, error) {
 	cfg := &Config{
+		TCPAddr:         ":9090",
 		HTTPAddr:        ":8080",
 		PprofAddr:       ":5050",
 		ReadTimeout:     10 * time.Second,
 		WriteTimeout:    10 * time.Second,
 		ShutdownTimeout: 10 * time.Second,
-		LogLevel:        "info",
+		LogLevel:        "debug",
 		LogPath:         "",
 	}
 
@@ -85,6 +87,9 @@ func (c *Config) loadFromFile(path string) error {
 }
 
 func (c *Config) applyEnvOverrides() {
+	if val := os.Getenv("TCP_ADDR"); val != "" {
+		c.TCPAddr = val
+	}
 	if val := os.Getenv("HTTP_ADDR"); val != "" {
 		c.HTTPAddr = val
 	}
