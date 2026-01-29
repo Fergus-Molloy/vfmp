@@ -17,4 +17,4 @@ WORKDIR /app
 
 COPY --from=builder /build/vfmp .
 
-ENTRYPOINT [ "./vfmp" ]
+ENTRYPOINT [ "/app/vfmp" ]
