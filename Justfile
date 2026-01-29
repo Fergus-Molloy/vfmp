@@ -30,12 +30,11 @@ integration *flags:
 		just docker integration
 	fi
 
-	docker run -d --rm --name vfmp-integration -p 8081:8081 -v ./config.test.yml:/app/config.yml vfmp:integration -config /app/config.yml > /dev/null
+	docker run --rm --name vfmp-integration -p 8081:8081 -v ./config.test.yml:/app/config.yml vfmp:integration -config /app/config.yml > logs/integration.log 2>&1 &
 
 	sleep 1 # wait for server to start
 
 	gotestsum --format=testname ./tests/... -config "../config.test.yml" {{flags}}
-	docker logs vfmp-integration 2> logs/integration.log
 	docker stop vfmp-integration 2>&1 > /dev/null
 
 test: unit integration
