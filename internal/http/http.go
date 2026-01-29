@@ -7,11 +7,12 @@ import (
 	_ "net/http/pprof"
 	"sync"
 
+	"fergus.molloy.xyz/vfmp/internal/broker"
 	"fergus.molloy.xyz/vfmp/internal/config"
 )
 
 // StartHttpServer creates and starts a [http.Server]. Returns the server so that shutdown can be called.
-func StartHttpServer(wg *sync.WaitGroup, config *config.Config) *http.Server {
+func StartHttpServer(broker *broker.Broker, wg *sync.WaitGroup, config *config.Config) *http.Server {
 	srv := &http.Server{
 		Addr:         config.HTTPAddr,
 		ReadTimeout:  config.ReadTimeout,
@@ -19,7 +20,7 @@ func StartHttpServer(wg *sync.WaitGroup, config *config.Config) *http.Server {
 	}
 
 	mux := http.NewServeMux()
-	registerHandlers(mux)
+	registerHandlers(mux, broker)
 
 	var h http.Handler = mux
 	h = logRequest(h)

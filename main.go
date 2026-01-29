@@ -8,9 +8,11 @@ import (
 	"sync"
 	"syscall"
 
+	"fergus.molloy.xyz/vfmp/internal/broker"
 	"fergus.molloy.xyz/vfmp/internal/config"
 	"fergus.molloy.xyz/vfmp/internal/http"
 	"fergus.molloy.xyz/vfmp/internal/logger"
+	"fergus.molloy.xyz/vfmp/internal/tcp"
 )
 
 func main() {
@@ -33,12 +35,17 @@ func main() {
 	signal, sigCancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer sigCancel()
 	wg := new(sync.WaitGroup)
+	wg.Add(1)
+	broker := broker.StartBroker(signal, wg)
 
 	wg.Add(1)
-	srv := http.StartHttpServer(wg, config)
+	srv := http.StartHttpServer(broker, wg, config)
 
 	wg.Add(1)
 	pprof := http.StartPprofServer(wg, config)
+
+	wg.Add(1)
+	tcpSrv := tcp.StartTCPServer(broker, signal, wg, config)
 
 	<-signal.Done()
 	slog.Warn("shutting down vfmp")
@@ -48,6 +55,7 @@ func main() {
 
 	go http.ShutdownServer(srv, shutdownCtx)
 	go http.ShutdownServer(pprof, shutdownCtx)
+	(*tcpSrv).Close()
 
 	wg.Wait()
 	slog.Warn("shut down complete")
