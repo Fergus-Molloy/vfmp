@@ -50,9 +50,16 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: stable
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          push: false
+          load: true
+          tags: vfmp:integration
       - name: Run integration tests
         run: |
-          go run main.go -config "config.test.yml" > vfmp.log 2>&1 &
+          docker run --rm --name vfmp-integration -p 8081:8081 -v ./config.test.yml:/app/config.yml vfmp:integration -config /app/config.yml > vfmp.log 2>&1 &
+          sleep 1
           go run gotest.tools/gotestsum@latest --format=testname ./tests/... -config "../config.test.yml"
       - uses: actions/upload-artifact@v3
         if: failure()

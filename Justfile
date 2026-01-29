@@ -27,7 +27,7 @@ integration *flags:
 		jq '.[].RepoTags[] == "vfmp:{{version}}"' | \
 		grep true > /dev/null
 	if [ "$?" -ne "0" ]; then
-		just docker integration 2>/dev/null
+		just docker integration
 	fi
 
 	docker run -d --rm --name vfmp-integration -p 8081:8081 -v ./config.test.yml:/app/config.yml vfmp:integration -config /app/config.yml > /dev/null
@@ -35,6 +35,7 @@ integration *flags:
 	sleep 1 # wait for server to start
 
 	gotestsum --format=testname ./tests/... -config "../config.test.yml" {{flags}}
+	docker logs vfmp-integration 2> logs/integration.log
 	docker stop vfmp-integration 2>&1 > /dev/null
 
 test: unit integration
