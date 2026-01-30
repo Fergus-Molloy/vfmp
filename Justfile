@@ -16,36 +16,36 @@ build:
 unit *flags:
 	gotestsum --format=testname -- ./internal/... {{flags}}
 
-watch:
-	watchexec -r -e go,mod,sum -- just run
+watch *recipes="":
+	watchexec -r -e go,mod,sum -- just {{recipes}}
 
 integration *flags:
 	#!/usr/bin/env sh
 	set -uo pipefail
 
-	docker inspect vfmp:integration 2>/dev/null | \
-		jq '.[].RepoTags[] == "vfmp:{{version}}"' | \
-		grep true > /dev/null
-	if [ "$?" -ne "0" ]; then
-		just docker integration
-	fi
-
-	docker run --rm --name vfmp-integration -p 8081:8081 -v ./config.test.yml:/app/config.yml vfmp:integration -config /app/config.yml > logs/integration.log 2>&1 &
+	just build
+	./vfmp -config "config.test.yml" > logs/integration.log 2>&1 &
+	PID=$!
+	trap "kill -s SIGTERM $PID 2>/dev/null || true" EXIT
 
 	sleep 1 # wait for server to start
 
 	gotestsum --format=testname ./tests/... -config "../config.test.yml" {{flags}}
-	docker stop vfmp-integration 2>&1 > /dev/null
+	kill $PID 2>/dev/null || true
+
 
 test: unit integration
 
 [script]
-run config="": build
+run config="" *flags="-log-path logs/vfmp.log": build
 	if [ -z "{{config}}" ]; then
-		./vfmp -log-path logs/vfmp.log
+		./vfmp {{flags}}
 	else
-		./vfmp -log-path logs/vfmp.log -config "{{config}}"
+		./vfmp -config "{{config}}" {{flags}}
 	fi
+
+start config="": build
+	just run {{config}} > logs/vfmp.log 2>&1 &
 
 [script]
 client config="":
