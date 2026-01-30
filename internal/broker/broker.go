@@ -28,6 +28,7 @@ func (b *Broker) awaitMessages(ctx context.Context, wg *sync.WaitGroup) {
 		case m := <-b.MsgChan:
 			q := b.getOrCreateTopic(ctx, m.Topic)
 			q.Append(m)
+			slog.Info("new message added to queue", "topic", m.Topic, "correlationID", m.CorrelationID)
 		case <-ctx.Done():
 			slog.Info("broker finished")
 			return

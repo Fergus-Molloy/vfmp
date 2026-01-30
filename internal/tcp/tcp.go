@@ -151,6 +151,7 @@ func (c *tcpClient) handleMessage(broker *broker.Broker, logger *slog.Logger, ms
 		topicChan := broker.NotifyReady(ctx, topic)
 		select {
 		case m := <-topicChan:
+			slog.Info("received message from queue", "topic", topic, "correlationID", m.CorrelationID)
 			c.write <- fmt.Appendf(nil, "MSG|%s|%s", m.CorrelationID, m.Data)
 		case <-ctx.Done():
 			return
