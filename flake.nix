@@ -56,6 +56,7 @@
               golangci-lint-langserver
               gotestsum
               watchexec
+              delve
             ];
 
             # Set any environment variables for your development environment
