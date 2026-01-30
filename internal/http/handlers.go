@@ -1,7 +1,9 @@
 package http
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -47,5 +49,38 @@ func registerHandlers(mux *http.ServeMux, broker *broker.Broker) {
 
 		slog.Info("new message", "bytes", len(msg), "topic", topic, "correlationID", correlationID)
 		broker.MsgChan <- model.NewMessage(msg, topic, correlationID)
+	})
+
+	mux.HandleFunc("GET /messages/{topic...}", func(w http.ResponseWriter, r *http.Request) {
+		topic := r.PathValue("topic")
+
+		data := r.URL.Query().Get("data")
+
+		switch data {
+		case "count":
+			count := broker.GetCount(topic)
+			_, _ = w.Write(fmt.Appendf(nil, `{"count": %d}`, count))
+			return
+		case "peek":
+			msg, err := broker.Peek(topic)
+			if err != nil {
+				slog.Error("could not find message", "err", err, "topic", topic, "correlationID", r.Header.Get("X-Correlation-ID"))
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			data, err := json.Marshal(msg)
+			if err != nil {
+				slog.Error("could not marshal message", "err", err, "topic", topic, "correlationID", r.Header.Get("X-Correlation-ID"))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			_, _ = w.Write(data)
+			return
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	})
 }

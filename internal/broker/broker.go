@@ -65,4 +65,21 @@ func (b *Broker) NotifyReady(ctx context.Context, topic string) <-chan model.Mes
 	q := b.getOrCreateTopic(ctx, topic)
 	return q.GetMsgChan()
 }
+
+func (b *Broker) GetCount(topic string) int {
+	q, ok := b.topics[topic]
+	if !ok {
+		return 0
+	}
+
+	return q.Len()
+}
+
+func (b *Broker) Peek(topic string) (model.Message, error) {
+	q, ok := b.topics[topic]
+	if !ok {
+		return model.Message{}, ErrNotFound
+	}
+
+	return q.Peek()
 }
