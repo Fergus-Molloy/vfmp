@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: https://data.forgejo.org/actions/setup-go@v6
         with:
           go-version: stable
       - name: golangci-lint
@@ -27,9 +27,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: https://data.forgejo.org/actions/setup-go@v6
         with:
           go-version: stable
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Build
         run: go build -o vfmp
 
@@ -37,9 +45,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: https://data.forgejo.org/actions/setup-go@v6
         with:
           go-version: stable
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Run unit tests
         run: go run gotest.tools/gotestsum@latest --format=testname ./internal/...
 
@@ -47,9 +63,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: https://data.forgejo.org/actions/setup-go@v6
         with:
           go-version: stable
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Run integration tests
         run: |
           go run main.go -config "config.test.yml" > vfmp.log 2>&1 &
