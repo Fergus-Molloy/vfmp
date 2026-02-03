@@ -69,7 +69,7 @@ func configureFlags() {
 }
 
 func (c *Config) loadFromFile(path string) error {
-	slog.Info("attempting to load config from path", "path", path)
+	slog.Debug("attempting to load config from path", "path", path)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return nil
 	}

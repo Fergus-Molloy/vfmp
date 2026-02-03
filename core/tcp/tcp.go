@@ -21,46 +21,57 @@ type TCPClient struct {
 	Read        <-chan []byte
 	Write       chan<- []byte
 	read, write chan []byte
+	conn        net.Conn
 }
 
-func NewClient(conn net.Conn, ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) *TCPClient {
+// NewClient creates a tcp client that communicates via read and write channels, returns the client and a context that will be "Done" if the client exits
+func NewClient(conn net.Conn, ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) (*TCPClient, context.Context) {
 	defer wg.Done()
+
+	ctx, cancel := context.WithCancel(ctx)
 
 	logger = logger.With("client_addr", conn.RemoteAddr())
 
+	read := make(chan []byte, 1)
 	write := make(chan []byte, 1)
 
-	go startClientWriter(conn, write, ctx, logger)
-	read := make(chan []byte, 1)
-	go startClientReader(conn, read, ctx, logger)
-
-	go awaitShutdown(ctx, read, write)
-
-	return &TCPClient{
+	client := &TCPClient{
 		Read:  read,
 		Write: write,
 		read:  read,
 		write: write,
+		conn:  conn,
 	}
 
+	go client.startClientWriter(ctx, cancel, logger)
+	go client.startClientReader(ctx, cancel, logger)
+	go client.awaitShutdown(ctx, cancel)
+
+	return client, ctx
 }
 
-func awaitShutdown(ctx context.Context, read chan []byte, write chan []byte) {
+func (c *TCPClient) RemoteAddr() net.Addr {
+	return c.conn.RemoteAddr()
+}
+
+func (c *TCPClient) awaitShutdown(ctx context.Context, cancel context.CancelFunc) {
 	<-ctx.Done()
-	close(read)
-	close(write)
+	cancel()
+	close(c.read)
+	close(c.write)
 }
 
-func startClientReader(client net.Conn, read chan []byte, ctx context.Context, logger *slog.Logger) {
-	defer client.Close()
+func (c *TCPClient) startClientReader(ctx context.Context, cancel context.CancelFunc, logger *slog.Logger) {
+	defer cancel()
+	defer c.conn.Close()
 
 	for {
-		err := client.SetReadDeadline(time.Now().Add(time.Second))
+		err := c.conn.SetReadDeadline(time.Now().Add(time.Second))
 		if err != nil {
 			logger.Error("error setting deadline for client", "err", err)
 			return
 		}
-		size, err := readN(client, 8)
+		size, err := readN(c.conn, 8)
 		if err != nil {
 			switch {
 			case os.IsTimeout(err) && contextIsDone(ctx), err == io.EOF, errors.Is(err, net.ErrClosed):
@@ -73,7 +84,7 @@ func startClientReader(client net.Conn, read chan []byte, ctx context.Context, l
 			}
 		}
 		messageSize := binary.BigEndian.Uint64(size)
-		msg, err := readN(client, int(messageSize))
+		msg, err := readN(c.conn, int(messageSize))
 		if err != nil {
 			switch {
 			case os.IsTimeout(err) && contextIsDone(ctx), err == io.EOF, errors.Is(err, net.ErrClosed):
@@ -86,10 +97,10 @@ func startClientReader(client net.Conn, read chan []byte, ctx context.Context, l
 			}
 		}
 
-		logger.Info("read message from tcp client", "bytes", len(msg))
+		logger.Debug("read message from tcp client", "bytes", len(msg))
 
 		select {
-		case read <- msg:
+		case c.read <- msg:
 		// do nothing
 		case <-ctx.Done():
 			return
@@ -97,14 +108,15 @@ func startClientReader(client net.Conn, read chan []byte, ctx context.Context, l
 	}
 }
 
-func startClientWriter(client net.Conn, write chan []byte, ctx context.Context, logger *slog.Logger) {
-	defer client.Close()
+func (c *TCPClient) startClientWriter(ctx context.Context, cancel context.CancelFunc, logger *slog.Logger) {
+	defer cancel()
+	defer c.conn.Close()
 
 	for {
 		select {
-		case data := <-write:
+		case data := <-c.write:
 			d := encodeData(data)
-			_, err := client.Write(d)
+			_, err := c.conn.Write(d)
 			if err != nil {
 				logger.Error("failed to write to tcp client", "err", err, "data", d)
 			}

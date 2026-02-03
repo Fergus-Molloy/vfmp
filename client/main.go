@@ -45,11 +45,15 @@ func main() {
 
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
-	c := tcp.NewClient(conn, signal, wg, slog.Default())
+	c, clientCtx := tcp.NewClient(conn, signal, wg, slog.Default())
 
 	for {
 		select {
 		case <-signal.Done():
+			wg.Wait()
+			return
+		case <-clientCtx.Done():
+			exitFunc()
 			wg.Wait()
 			return
 		case i := <-input:
