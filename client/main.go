@@ -44,7 +44,6 @@ func main() {
 	}
 
 	wg := new(sync.WaitGroup)
-	wg.Add(1)
 	c, clientCtx := tcp.NewClient(conn, signal, wg, slog.Default())
 
 	for {

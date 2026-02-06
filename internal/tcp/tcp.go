@@ -61,7 +61,6 @@ func StartTCPServer(broker *broker.Broker, ctx context.Context, wg *sync.WaitGro
 				}
 				logger.Error("error accepting new tcp client", "err", err)
 			}
-			wg.Add(1)
 			client, clientCtx := tcp.NewClient(conn, ctx, wg, logger)
 			c := newTCPClient(client)
 

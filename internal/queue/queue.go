@@ -66,14 +66,19 @@ func (q *Queue) Len() int {
 
 func (q *Queue) handleMessageChans(ctx context.Context) {
 	for {
-		q.mu.Lock()
-		elem := q.list.Front()
-		if elem != nil {
-			q.awaitMsgOp(ctx, elem)
-		} else {
-			q.awaitNewMsg(ctx)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			q.mu.Lock()
+			elem := q.list.Front()
+			if elem != nil {
+				q.awaitMsgOp(ctx, elem)
+			} else {
+				q.awaitNewMsg(ctx)
+			}
+			q.mu.Unlock()
 		}
-		q.mu.Unlock()
 	}
 }
 

@@ -26,8 +26,6 @@ type TCPClient struct {
 
 // NewClient creates a tcp client that communicates via read and write channels, returns the client and a context that will be "Done" if the client exits
 func NewClient(conn net.Conn, ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) (*TCPClient, context.Context) {
-	defer wg.Done()
-
 	ctx, cancel := context.WithCancel(ctx)
 
 	logger = logger.With("client_addr", conn.RemoteAddr())
@@ -43,9 +41,10 @@ func NewClient(conn net.Conn, ctx context.Context, wg *sync.WaitGroup, logger *s
 		conn:  conn,
 	}
 
-	go client.startClientWriter(ctx, cancel, logger)
-	go client.startClientReader(ctx, cancel, logger)
-	go client.awaitShutdown(ctx, cancel)
+	wg.Add(3)
+	go client.startClientWriter(ctx, cancel, wg, logger)
+	go client.startClientReader(ctx, cancel, wg, logger)
+	go client.awaitShutdown(ctx, cancel, wg)
 
 	return client, ctx
 }
@@ -54,14 +53,17 @@ func (c *TCPClient) RemoteAddr() net.Addr {
 	return c.conn.RemoteAddr()
 }
 
-func (c *TCPClient) awaitShutdown(ctx context.Context, cancel context.CancelFunc) {
+func (c *TCPClient) awaitShutdown(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	<-ctx.Done()
 	cancel()
 	close(c.read)
 	close(c.write)
 }
 
-func (c *TCPClient) startClientReader(ctx context.Context, cancel context.CancelFunc, logger *slog.Logger) {
+func (c *TCPClient) startClientReader(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, logger *slog.Logger) {
+	defer wg.Done()
 	defer cancel()
 	defer c.conn.Close()
 
@@ -108,7 +110,8 @@ func (c *TCPClient) startClientReader(ctx context.Context, cancel context.Cancel
 	}
 }
 
-func (c *TCPClient) startClientWriter(ctx context.Context, cancel context.CancelFunc, logger *slog.Logger) {
+func (c *TCPClient) startClientWriter(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, logger *slog.Logger) {
+	defer wg.Done()
 	defer cancel()
 	defer c.conn.Close()
 
