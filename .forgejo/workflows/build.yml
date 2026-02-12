@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: https://data.forgejo.org/actions/setup-go@v6
         with:
-          go-version: stable
+          go-version-file: go.mod
       - name: golangci-lint
         uses: https://github.com/golangci/golangci-lint-action@v9
         with:
@@ -29,12 +29,12 @@ jobs:
       - uses: actions/checkout@v6
       - uses: https://data.forgejo.org/actions/setup-go@v6
         with:
-          go-version: stable
+          go-version-file: go.mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Build
-        run: go build -o vfmp
+        run: go build -o vfmp ./cmd/vfmp/main.go
 
   unit:
     runs-on: ubuntu-latest
@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: https://data.forgejo.org/actions/setup-go@v6
         with:
-          go-version: stable
+          go-version-file: go.mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
@@ -55,10 +55,10 @@ jobs:
       - uses: actions/checkout@v6
       - uses: https://data.forgejo.org/actions/setup-go@v6
         with:
-          go-version: stable
+          go-version-file: go.mod
       - name: Run integration tests
         run: |
-          go run main.go -config "config.test.yml" > vfmp.log 2>&1 &
+          go run ./cmd/vfmp/main.go -config "config.test.yml" > vfmp.log 2>&1 &
           sleep 1
           go run gotest.tools/gotestsum@latest --format=testname ./tests/... -config "../config.test.yml"
       - uses: actions/upload-artifact@v3
