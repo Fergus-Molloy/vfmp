@@ -21,20 +21,6 @@ func registerHandlers(mux *http.ServeMux, broker *broker.Broker) {
 		_, _ = w.Write([]byte(version.Version))
 	})
 
-	mux.HandleFunc("/echo", func(w http.ResponseWriter, r *http.Request) {
-		msg, err := io.ReadAll(r.Body)
-		defer r.Body.Close()
-
-		if err != nil && !errors.Is(err, io.EOF) {
-			slog.Error("could not read body", "err", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		slog.Info("echoing message", "msg", string(msg))
-
-		_, _ = w.Write(msg)
-	})
-
 	mux.HandleFunc("POST /messages/{topic...}", func(w http.ResponseWriter, r *http.Request) {
 		msg, err := io.ReadAll(r.Body)
 		defer r.Body.Close()
