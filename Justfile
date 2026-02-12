@@ -54,6 +54,9 @@ client config="": (build "client")
 		./bin/client -config "{{config}}"
 	fi
 
+cli *args="test": (build "cli")
+	./bin/cli localhost:9090 {{args}}
+
 [script]
 docker +tags="":
 	docker build --build-arg VERSION={{version}} -t vfmp:latest .
