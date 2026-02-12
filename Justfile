@@ -10,8 +10,8 @@ version:
 lint:
 	golangci-lint run
 
-build:
-	go build -o vfmp -ldflags "-X fergus.molloy.xyz/vfmp/internal/version.Version={{version}}"
+build target="vfmp":
+	go build -o bin/{{target}} -ldflags "-X fergus.molloy.xyz/vfmp/internal/version.Version={{version}}" "./cmd/{{target}}/main.go"
 
 unit *flags:
 	gotestsum --format=testname -- ./internal/... {{flags}}
@@ -19,12 +19,11 @@ unit *flags:
 watch *recipes="":
 	watchexec -r -e go,mod,sum -- just {{recipes}}
 
-integration *flags:
+integration *flags: build
 	#!/usr/bin/env sh
 	set -uo pipefail
 
-	just build
-	./vfmp -config "config.test.yml" > logs/integration.log 2>&1 &
+	./bin/vfmp -config "config.test.yml" > logs/integration.log 2>&1 &
 	PID=$!
 	trap "kill -s SIGTERM $PID 2>/dev/null || true" EXIT
 
@@ -39,20 +38,20 @@ test: unit integration
 [script]
 run config="" *flags="-log-path logs/vfmp.log": build
 	if [ -z "{{config}}" ]; then
-		./vfmp {{flags}}
+		./bin/vfmp {{flags}}
 	else
-		./vfmp -config "{{config}}" {{flags}}
+		./bin/vfmp -config "{{config}}" {{flags}}
 	fi
 
 start config="": build
 	just run {{config}} > logs/vfmp.log 2>&1 &
 
 [script]
-client config="":
+client config="": (build "client")
 	if [ -z "{{config}}" ]; then
-		go run client/main.go localhost:9090 test
+		./bin/client localhost:9090 test
 	else
-		go run client/main.go -config "{{config}}"
+		./bin/client -config "{{config}}"
 	fi
 
 [script]
