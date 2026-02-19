@@ -1,6 +1,6 @@
 ---
 name: vfmp
-description: toolkit for interacting with the vfmp project. Supports publishing messages and gathering information around the current the current state of the application. Use when user asks to interact with a topic such as "get message count for topic" or "publish message to topic" or "peek message on topic".
+description: toolkit for interacting with the vfmp project. Supports publishing messages, consuming messages, and gathering information around the current the current state of the application. Use when user asks to interact with a topic such as "get message count for topic" or "publish message to topic" or "peek message on topic" or "consume message from topic".
 ---
 # VFMP
 
@@ -114,3 +114,39 @@ HTTP/1.1 400 Bad Request
 ```
 
 Any other response or non-zero exit code means vfmp is not running
+
+# Consuming Messages
+Unlike peek once a message is consumed it will no longer be available for other clients to read.
+To actually consume a message from vfmp you can use the cli application. Always rebuild the cli app before running further commands, you can build it using `just build cli`.
+To consume a message from a given topic the server address and topic name must be given to cli app. By default the tcp server will be on port 9090 so it's base address will be `localhost:9090`.
+
+## Flags
+The cli binary located at `./bin/cli` has several flags for controlling consumption of messages
+
+- `-address` the address of the vfmp server, defaults to `localhost:9090` (the same as the default tcp server address)
+- `-topic` the topic to consume from, defaults to `test`
+- `-n` the number of messages to consume
+- `-sequence` a comma-separated list of responses to give to the server after receiving a message. Overrides the `-n` flag to be `len(sequence)`
+
+## Consume One Message
+This will print to stdout the contents of a message in the format `MSG|$TOPIC|$ID|$DATA`
+```bash
+./bin/cli -topic=$TOPIC
+```
+
+## Consume Multiple Messages
+This will print to stdout the contents of three messages in the format `MSG|$TOPIC|$ID|$DATA`
+```bash
+./bin/cli -topic=$TOPIC -n=3
+```
+
+## Custom Responses
+Supported response types are:
+
+- `ACK` consume message normally
+- `NCK` put message to back of queue
+- `DLQ` send message to dead letter queue
+
+```bash
+./bin/cli -topic=$TOPIC -sequence=ACK,NCK,DLQ # ACK first message, NCK second message, DLQ final message
+```

@@ -5,7 +5,7 @@ default: build lint
 version := `git describe --tags --match='v[0-9].[0-9].[0-9]' HEAD 2>/dev/null || true`
 
 version:
-	echo {{ version }}
+	@echo {{ version }}
 
 lint:
 	golangci-lint run
@@ -46,6 +46,9 @@ run config="" *flags="-log-path logs/vfmp.log": build
 start config="": build
 	just run {{config}} > logs/vfmp.log 2>&1 &
 
+stop:
+	pkill vfmp
+
 [script]
 client config="": (build "client")
 	if [ -z "{{config}}" ]; then
@@ -59,7 +62,7 @@ cli *args="test": (build "cli")
 
 [script]
 docker +tags="":
-	docker build --build-arg VERSION={{version}} -t vfmp:latest .
+	docker build -f deploy/Dockerfile --build-arg VERSION={{version}} -t vfmp:latest .
 	docker tag vfmp:latest vfmp:{{version}}
 	for tag in {{tags}}; do
 		docker tag vfmp:latest "vfmp:$tag"

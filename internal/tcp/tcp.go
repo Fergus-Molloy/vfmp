@@ -3,21 +3,17 @@ package tcp
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net"
-	"strings"
 	"sync"
+	"time"
 
+	"fergus.molloy.xyz/vfmp/core/messages"
 	"fergus.molloy.xyz/vfmp/core/tcp"
 	"fergus.molloy.xyz/vfmp/internal/broker"
 	"fergus.molloy.xyz/vfmp/internal/config"
 	"fergus.molloy.xyz/vfmp/internal/model"
 	"github.com/google/uuid"
-)
-
-var (
-	ErrMalformedPayload = errors.New("payload is malformed")
 )
 
 type MessageType string
@@ -33,7 +29,7 @@ const (
 type tcpClient struct {
 	inner    *tcp.TCPClient
 	mu       *sync.Mutex
-	messages map[string]model.Message
+	messages map[uuid.UUID]model.Message
 }
 
 func StartTCPServer(broker *broker.Broker, ctx context.Context, wg *sync.WaitGroup, config *config.Config) *net.Listener {
@@ -64,8 +60,16 @@ func StartTCPServer(broker *broker.Broker, ctx context.Context, wg *sync.WaitGro
 			client, clientCtx := tcp.NewClient(conn, ctx, wg, logger)
 			c := newTCPClient(client)
 
+			// clean-up on client disconnect
+			context.AfterFunc(clientCtx, func() {
+				logger.Warn("client disconnected", "client_addr", client.RemoteAddr())
+				for _, m := range c.messages {
+					c.nack(ctx, logger, broker, m.CorrelationID)
+				}
+			})
+
 			wg.Add(1)
-			go handleClient(c, broker, ctx, clientCtx, wg, logger)
+			go handleClient(c, broker, ctx, clientCtx, wg, logger.With("client_addr", client.RemoteAddr()))
 		}
 	}()
 
@@ -91,94 +95,100 @@ func newTCPClient(c *tcp.TCPClient) *tcpClient {
 	return &tcpClient{
 		inner:    c,
 		mu:       new(sync.Mutex),
-		messages: make(map[string]model.Message),
+		messages: make(map[uuid.UUID]model.Message),
 	}
 }
 
-func (c *tcpClient) handleMessage(broker *broker.Broker, logger *slog.Logger, msg []byte, ctx context.Context) {
-	if len(msg) < 3 {
-		logger.Error("received message is malformed", "err", ErrMalformedPayload)
+func (c *tcpClient) handleMessage(broker *broker.Broker, logger *slog.Logger, bytes []byte, ctx context.Context) {
+	m, err := messages.Parse(bytes)
+	if err != nil {
+		logger.Error("could not parse message", "err", err, "raw", string(bytes))
 		return
 	}
 
-	msgType := MessageType(msg[:3])
-	l := logger.With("msgType", msgType)
-	switch msgType {
-	case RDY:
-		topic := strings.TrimSpace(string(msg[4:]))
-		l.Info("client ready for new message", "topic", topic)
+	switch msg := m.(type) {
+	case messages.RdyMessage:
+		l := logger.With("msgType", msg.MsgType).With("topic", msg.Topic)
 
-		topicChan := broker.NotifyReady(ctx, topic)
+		topicChan := broker.NotifyReady(ctx, msg.Topic)
 		select {
 		case m := <-topicChan:
 			c.mu.Lock()
 			c.messages[m.CorrelationID] = m
+			go c.awaitAck(ctx, logger, broker, m.CorrelationID)
 
-			l.Info("received message from queue", "topic", topic, "correlationID", m.CorrelationID)
+			l.Info("received message from queue", "correlationID", m.CorrelationID)
 
 			select {
-			case c.inner.Write <- fmt.Appendf(nil, "MSG|%s|%s", m.CorrelationID, m.Data):
-				c.mu.Unlock()
+			case c.inner.Write <- m.ToMsgMessage().Bytes():
 			case <-ctx.Done():
-				c.mu.Unlock()
-				return
 			}
-		case <-ctx.Done():
-			return
-		}
-
-	case ACK:
-		stringID := strings.TrimSpace(string(msg[4:]))
-		_, err := uuid.Parse(stringID)
-		if err != nil {
-			l.Error("could not parse correlation id", "err", err, "data", stringID)
-			return
-		}
-
-		c.mu.Lock()
-		delete(c.messages, stringID)
-		l.Debug("acked message", "correlationID", stringID)
-		c.mu.Unlock()
-
-	case NCK:
-		stringID := strings.TrimSpace(string(msg[4:]))
-		_, err := uuid.Parse(stringID)
-		if err != nil {
-			l.Error("could not parse correlation id", "err", err, "data", stringID)
-			return
-		}
-		l.Info("message was nacked", "correlationID", stringID)
-		c.mu.Lock()
-		m, ok := c.messages[stringID]
-		if !ok {
-			l.Error("could not find message in map", "correlationID", stringID)
-			return
-		}
-		delete(c.messages, stringID)
-		// return message to end of queue
-		select {
-		case broker.MsgChan <- m:
 			c.mu.Unlock()
 		case <-ctx.Done():
-			c.mu.Unlock()
 			return
 		}
 
-	case DLT:
-		stringID := strings.TrimSpace(string(msg[4:]))
-		_, err := uuid.Parse(stringID)
-		if err != nil {
-			l.Error("could not parse correlation id", "err", err, "data", stringID)
-			return
-		}
-		l.Warn("dead lettering message", "correlationID", stringID)
+	case messages.AckMessage:
+		l := logger.With("msgType", msg.MsgType).With("topic", msg.Topic)
+		c.ack(l, msg.CorrelationID)
+
+	case messages.NckMessage:
+		l := logger.With("msgType", msg.MsgType).With("topic", msg.Topic)
+		c.nack(ctx, l, broker, msg.CorrelationID)
+
+	case messages.DlqMessage:
+		l := logger.With("msgType", msg.MsgType).With("topic", msg.Topic)
+		l.Warn("dead lettering message", "correlationID", msg.CorrelationID)
 
 		// for now just delete the message
 		c.mu.Lock()
-		delete(c.messages, stringID)
+		delete(c.messages, msg.CorrelationID)
 		c.mu.Unlock()
 	default:
-		l.Error("unknown message type", "err", ErrMalformedPayload)
+		logger.Error("unknown message type")
 		return
+	}
+}
+
+func (c *tcpClient) nack(ctx context.Context, l *slog.Logger, broker *broker.Broker, correlationID uuid.UUID) {
+	l.Info("message was nacked", "correlationID", correlationID)
+	c.mu.Lock()
+	m, ok := c.messages[correlationID]
+	if !ok {
+		l.Error("could not find message in map", "correlationID", correlationID)
+		return
+	}
+	delete(c.messages, correlationID)
+	// return message to end of queue
+	select {
+	case broker.MsgChan <- m:
+		c.mu.Unlock()
+	case <-ctx.Done():
+		c.mu.Unlock()
+		return
+	}
+}
+
+func (c *tcpClient) ack(l *slog.Logger, correlationID uuid.UUID) {
+	c.mu.Lock()
+	delete(c.messages, correlationID)
+	l.Debug("acked message", "correlationID", correlationID)
+	c.mu.Unlock()
+}
+
+func (c *tcpClient) awaitAck(ctx context.Context, l *slog.Logger, broker *broker.Broker, id uuid.UUID) {
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(time.Second * 10):
+		l.Debug("timed out waiting for ack")
+		c.mu.Lock()
+		defer c.mu.Unlock()
+
+		_, ok := c.messages[id]
+		if ok {
+			// nack
+			c.nack(ctx, l, broker, id)
+		}
 	}
 }

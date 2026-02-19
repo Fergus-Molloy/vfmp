@@ -11,6 +11,7 @@ import (
 	"fergus.molloy.xyz/vfmp/internal/broker"
 	"fergus.molloy.xyz/vfmp/internal/model"
 	"fergus.molloy.xyz/vfmp/internal/version"
+	"github.com/google/uuid"
 )
 
 func registerHandlers(mux *http.ServeMux, broker *broker.Broker) {
@@ -31,7 +32,12 @@ func registerHandlers(mux *http.ServeMux, broker *broker.Broker) {
 			return
 		}
 		topic := r.PathValue("topic")
-		correlationID := r.Header.Get("X-Correlation-ID")
+		correlationID, err := uuid.Parse(r.Header.Get("X-Correlation-ID"))
+		if err != nil {
+			slog.Error("could not parse correlation id header", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		slog.Info("new message", "bytes", len(msg), "topic", topic, "correlationID", correlationID)
 		broker.MsgChan <- model.NewMessage(msg, topic, correlationID)
