@@ -57,6 +57,8 @@
               gotestsum
               watchexec
               delve
+
+              kubectl
             ];
 
             # Set any environment variables for your development environment

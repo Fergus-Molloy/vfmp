@@ -1,10 +1,19 @@
-on: 
+on:
   push:
     tags:
       - 'v*'
     branches:
       - main
   pull_request:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
 
 env:
   REGISTRY: git.molloy.xyz
@@ -110,3 +119,26 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    needs: [build-and-push-image]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install kubectl
+        uses: https://github.com/Azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -k deploy/k8s/overlays/${{ inputs.environment }}
+          kubectl rollout status deployment/vfmp -n ${{ inputs.environment }} --timeout=5m

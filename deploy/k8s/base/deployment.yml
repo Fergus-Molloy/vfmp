@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vfmp
+spec:
+  replicas: 3
+  template:
+    metadata:
+    spec:
+      containers:
+        - name: vfmp
+          image: git.molloy.xyz/fergus-molloy/vfmp:latest
+          imagePullPolicy: Always
+          livenessProbe:
+            httpGet:
+              path: /control/healthcheck
+              port: 8080
+            periodSeconds: 2
+          ports:
+            - containerPort: 8080
