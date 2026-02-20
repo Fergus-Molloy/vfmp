@@ -54,7 +54,7 @@ func StartMetricServer(reg *prometheus.Registry, wg *sync.WaitGroup, config *con
 		Addr:         config.MetricsAddr,
 		ReadTimeout:  config.ReadTimeout,
 		WriteTimeout: config.WriteTimeout,
-		Handler:      http.DefaultServeMux,
+		Handler:      logRequest(http.DefaultServeMux),
 	}
 
 	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))

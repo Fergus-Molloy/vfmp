@@ -3,16 +3,23 @@ kind: Service
 metadata:
   name: vfmp
 spec:
+  selector:
+    app: vfmp
   ports:
-    - name: http_service
-      port: 80
-      protocol: TCP
+    - protocol: TCP
+      name: service-http
+      port: 8080
       targetPort: 8080
-    - name: http_metrics
-      port: 5050
-      protocol: TCP
-      targetPort: 5050
-    - name: tcp_client
+    - protocol: TCP
+      name: clients-tcp
       port: 9090
-      protocol: TCP
       targetPort: 9090
+    - protocol: TCP
+      name: metrics-http
+      port: 5050
+      targetPort: 5050
+  type: LoadBalancer
+status:
+  loadBalancer:
+    ingress:
+    - ip: 192.168.8.20
