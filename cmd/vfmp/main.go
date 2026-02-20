@@ -22,8 +22,6 @@ func main() {
 	if err != nil {
 		slog.Error("error loading config", "err", err)
 		os.Exit(1)
-
-
 	}
 
 	err = configureLogger(config)

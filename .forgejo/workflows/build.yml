@@ -75,7 +75,8 @@ jobs:
           go-version-file: go.mod
       - name: Run integration tests
         run: |
-          go run ./cmd/vfmp/main.go -config "config.test.yml" > vfmp.log 2>&1 &
+          go build -o vfmp ./cmd/vfmp/main.go
+          ./vfmp -config "config.test.yml" > vfmp.log 2>&1 &
           sleep 1
           go run gotest.tools/gotestsum@latest --format=testname ./tests/... -config "../config.test.yml"
       - uses: actions/upload-artifact@v3

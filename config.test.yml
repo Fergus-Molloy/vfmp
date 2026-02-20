@@ -1,5 +1,5 @@
 http_addr: ":8081"
-pprof_addr: ""
+metrics_addr: ""
 
 # HTTP timeouts
 read_timeout: 10s
