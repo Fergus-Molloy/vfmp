@@ -13,6 +13,8 @@ import (
 	"fergus.molloy.xyz/vfmp/internal/http"
 	"fergus.molloy.xyz/vfmp/internal/logger"
 	"fergus.molloy.xyz/vfmp/internal/tcp"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 )
 
 func main() {
@@ -20,6 +22,8 @@ func main() {
 	if err != nil {
 		slog.Error("error loading config", "err", err)
 		os.Exit(1)
+
+
 	}
 
 	err = configureLogger(config)
@@ -34,6 +38,13 @@ func main() {
 
 	signal, sigCancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer sigCancel()
+
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(
+		collectors.NewGoCollector(),
+		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+	)
+
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 	broker := broker.StartBroker(signal, wg)
@@ -42,7 +53,7 @@ func main() {
 	srv := http.StartHttpServer(broker, wg, config)
 
 	wg.Add(1)
-	pprof := http.StartPprofServer(wg, config)
+	metric := http.StartMetricServer(reg, wg, config)
 
 	wg.Add(1)
 	tcpSrv := tcp.StartTCPServer(broker, signal, wg, config)
@@ -54,7 +65,7 @@ func main() {
 	defer cancel()
 
 	go http.ShutdownServer(srv, shutdownCtx)
-	go http.ShutdownServer(pprof, shutdownCtx)
+	go http.ShutdownServer(metric, shutdownCtx)
 	(*tcpSrv).Close()
 
 	wg.Wait()

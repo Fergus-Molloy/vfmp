@@ -9,6 +9,8 @@ import (
 
 	"fergus.molloy.xyz/vfmp/internal/broker"
 	"fergus.molloy.xyz/vfmp/internal/config"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // StartHttpServer creates and starts a [http.Server]. Returns the server so that shutdown can be called.
@@ -47,13 +49,15 @@ func serveHttpServer(wg *sync.WaitGroup, srv *http.Server) {
 	slog.Debug("http server stopped", "addr", srv.Addr)
 }
 
-func StartPprofServer(wg *sync.WaitGroup, config *config.Config) *http.Server {
+func StartMetricServer(reg *prometheus.Registry, wg *sync.WaitGroup, config *config.Config) *http.Server {
 	srv := &http.Server{
-		Addr:         config.PprofAddr,
+		Addr:         config.MetricsAddr,
 		ReadTimeout:  config.ReadTimeout,
 		WriteTimeout: config.WriteTimeout,
 		Handler:      http.DefaultServeMux,
 	}
+
+	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 
 	go serveHttpServer(wg, srv)
 

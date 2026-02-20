@@ -19,7 +19,7 @@ var (
 type Config struct {
 	TCPAddr         string        `yaml:"tcp_addr"`
 	HTTPAddr        string        `yaml:"http_addr"`
-	PprofAddr       string        `yaml:"pprof_addr"`
+	MetricsAddr     string        `yaml:"metrics_addr"`
 	ReadTimeout     time.Duration `yaml:"read_timeout"`
 	WriteTimeout    time.Duration `yaml:"write_timeout"`
 	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
@@ -42,7 +42,7 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		TCPAddr:         ":9090",
 		HTTPAddr:        ":8080",
-		PprofAddr:       ":5050",
+		MetricsAddr:     ":5050",
 		ReadTimeout:     10 * time.Second,
 		WriteTimeout:    10 * time.Second,
 		ShutdownTimeout: 10 * time.Second,
@@ -94,7 +94,7 @@ func (c *Config) applyEnvOverrides() {
 		c.HTTPAddr = val
 	}
 	if val := os.Getenv("PPROF_ADDR"); val != "" {
-		c.PprofAddr = val
+		c.MetricsAddr = val
 	}
 	if val := os.Getenv("LOG_LEVEL"); val != "" {
 		c.LogLevel = val

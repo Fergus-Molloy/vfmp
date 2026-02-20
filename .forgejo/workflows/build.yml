@@ -27,6 +27,14 @@ jobs:
       - uses: https://data.forgejo.org/actions/setup-go@v6
         with:
           go-version-file: go.mod
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l -e .)"
+          if [ -n "$unformatted" ]; then
+            echo "The following files have not been formatted:"
+            echo "$unformatted"
+            exit 1
+          fi
       - name: golangci-lint
         uses: https://github.com/golangci/golangci-lint-action@v9
         with:
