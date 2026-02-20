@@ -4,7 +4,15 @@ metadata:
   name: vfmp
 spec:
   ports:
-    - name: http
+    - name: http_service
       port: 80
       protocol: TCP
       targetPort: 8080
+    - name: http_metrics
+      port: 5050
+      protocol: TCP
+      targetPort: 5050
+    - name: tcp_client
+      port: 9090
+      protocol: TCP
+      targetPort: 9090
