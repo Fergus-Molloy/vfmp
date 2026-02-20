@@ -150,4 +150,5 @@ jobs:
       - name: Deploy to Kubernetes
         run: |
           kubectl apply -k deploy/k8s/overlays/${{ inputs.environment }}
+          kubectl rollout restart deployment/vfmp -n ${{ inputs.environment }}
           kubectl rollout status deployment/vfmp -n ${{ inputs.environment }} --timeout=5m
