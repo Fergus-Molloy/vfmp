@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"fergus.molloy.xyz/vfmp/internal/broker"
 	"fergus.molloy.xyz/vfmp/internal/config"
@@ -15,7 +16,31 @@ import (
 	"fergus.molloy.xyz/vfmp/internal/tcp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
+
+type metrics struct {
+	opsProcessed prometheus.Counter
+}
+
+func newMetrics(reg prometheus.Registerer) *metrics {
+	m := &metrics{
+		opsProcessed: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "vfmp_processed_ops_total",
+			Help: "The total number of processed events",
+		}),
+	}
+	return m
+}
+
+func recordMetrics(m *metrics) {
+	go func() {
+		for {
+			m.opsProcessed.Inc()
+			time.Sleep(2 * time.Second)
+		}
+	}()
+}
 
 func main() {
 	config, err := config.Load()
@@ -42,6 +67,8 @@ func main() {
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
+	m := newMetrics(reg)
+	recordMetrics(m)
 
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
