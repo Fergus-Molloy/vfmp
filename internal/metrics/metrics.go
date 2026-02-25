@@ -16,6 +16,7 @@ var (
 	MsgNck         prometheus.Counter
 	MsgDlq         prometheus.Counter
 	HTTPLatencySec *prometheus.SummaryVec
+	HTTPCount      *prometheus.CounterVec
 )
 
 func RegisterMetrics() {
@@ -54,6 +55,10 @@ func RegisterMetrics() {
 		Help: "The total number of messages received",
 	})
 
+	HTTPCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "vfmp_msg_dlq_count_total",
+		Help: "The total number of messages received",
+	}, []string{"type"})
 	HTTPLatencySec = promauto.NewSummaryVec(prometheus.SummaryOpts{
 		Name: "http_req_latency_seconds",
 		Help: "The latency for http requests in seconds",

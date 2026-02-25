@@ -28,6 +28,7 @@ func addCorrelationID(next http.Handler) http.Handler {
 
 func logRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		metrics.HTTPCount.WithLabelValues("in").Inc()
 		start := time.Now()
 
 		next.ServeHTTP(w, r)
@@ -38,7 +39,8 @@ func logRequest(next http.Handler) http.Handler {
 
 		us := float64(d.Microseconds()) / float64(1_000_000)
 		metrics.HTTPLatencySec.WithLabelValues(r.Method, r.URL.Path).Observe(us)
-		logger.Info("handled request", "latency_secs", fmt.Sprintf("%vs", us))
+		logger.Info("handled request", "latency_secs", fmt.Sprintf("%.3g", us))
+		metrics.HTTPCount.WithLabelValues("out").Inc()
 	})
 }
 
