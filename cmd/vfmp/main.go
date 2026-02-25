@@ -7,40 +7,14 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"fergus.molloy.xyz/vfmp/internal/broker"
 	"fergus.molloy.xyz/vfmp/internal/config"
 	"fergus.molloy.xyz/vfmp/internal/http"
 	"fergus.molloy.xyz/vfmp/internal/logger"
+	"fergus.molloy.xyz/vfmp/internal/metrics"
 	"fergus.molloy.xyz/vfmp/internal/tcp"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 )
-
-type metrics struct {
-	opsProcessed prometheus.Counter
-}
-
-func newMetrics(reg prometheus.Registerer) *metrics {
-	m := &metrics{
-		opsProcessed: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "vfmp_processed_ops_total",
-			Help: "The total number of processed events",
-		}),
-	}
-	return m
-}
-
-func recordMetrics(m *metrics) {
-	go func() {
-		for {
-			m.opsProcessed.Inc()
-			time.Sleep(2 * time.Second)
-		}
-	}()
-}
 
 func main() {
 	config, err := config.Load()
@@ -62,13 +36,7 @@ func main() {
 	signal, sigCancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer sigCancel()
 
-	reg := prometheus.NewRegistry()
-	reg.MustRegister(
-		collectors.NewGoCollector(),
-		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
-	)
-	m := newMetrics(reg)
-	recordMetrics(m)
+	metrics.RegisterMetrics()
 
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
@@ -78,7 +46,7 @@ func main() {
 	srv := http.StartHttpServer(broker, wg, config)
 
 	wg.Add(1)
-	metric := http.StartMetricServer(reg, wg, config)
+	metric := http.StartMetricServer(wg, config)
 
 	wg.Add(1)
 	tcpSrv := tcp.StartTCPServer(broker, signal, wg, config)

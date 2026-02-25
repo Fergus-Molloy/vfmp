@@ -9,7 +9,6 @@ import (
 
 	"fergus.molloy.xyz/vfmp/internal/broker"
 	"fergus.molloy.xyz/vfmp/internal/config"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -49,7 +48,7 @@ func serveHttpServer(wg *sync.WaitGroup, srv *http.Server) {
 	slog.Debug("http server stopped", "addr", srv.Addr)
 }
 
-func StartMetricServer(reg *prometheus.Registry, wg *sync.WaitGroup, config *config.Config) *http.Server {
+func StartMetricServer(wg *sync.WaitGroup, config *config.Config) *http.Server {
 	srv := &http.Server{
 		Addr:         config.MetricsAddr,
 		ReadTimeout:  config.ReadTimeout,
@@ -57,7 +56,7 @@ func StartMetricServer(reg *prometheus.Registry, wg *sync.WaitGroup, config *con
 		Handler:      logRequest(http.DefaultServeMux),
 	}
 
-	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+	http.Handle("/metrics", promhttp.Handler())
 
 	go serveHttpServer(wg, srv)
 

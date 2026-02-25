@@ -65,7 +65,7 @@ docker +tags="":
 	docker build -f deploy/Dockerfile --build-arg VERSION={{version}} -t vfmp:latest .
 	docker tag vfmp:latest vfmp:{{version}}
 	for tag in {{tags}}; do
-		docker tag vfmp:latest "vfmp:$tag"
+		docker tag vfmp:latest "$tag"
 	done
 
 

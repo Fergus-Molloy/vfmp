@@ -5,7 +5,9 @@ import (
 	"errors"
 	"log/slog"
 	"sync"
+	"time"
 
+	"fergus.molloy.xyz/vfmp/internal/metrics"
 	"fergus.molloy.xyz/vfmp/internal/model"
 	"fergus.molloy.xyz/vfmp/internal/queue"
 )
@@ -20,12 +22,29 @@ type Broker struct {
 	MsgChan chan model.Message
 }
 
+func (b *Broker) collectMetrics(ctx context.Context) {
+	t := time.NewTicker(time.Second * 5)
+	for {
+		select {
+		case <-t.C:
+			b.mu.Lock()
+			for _, q := range b.topics {
+				metrics.QueueLen.Observe(float64(q.Len()))
+			}
+			b.mu.Unlock()
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
 func (b *Broker) awaitMessages(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for {
 		select {
 		case m := <-b.MsgChan:
+			metrics.MsgIn.Inc()
 			q := b.getOrCreateTopic(ctx, m.Topic)
 			q.Append(m)
 			slog.Info("new message added to queue", "topic", m.Topic, "correlationID", m.CorrelationID)
@@ -43,6 +62,7 @@ func (b *Broker) getOrCreateTopic(ctx context.Context, topic string) *queue.Queu
 	q, ok := b.topics[topic]
 	if !ok {
 		slog.Info("creating new queue", "topic", topic)
+		metrics.TopicCount.Inc()
 		q = queue.New(ctx, topic)
 		b.topics[topic] = q
 	}
@@ -56,6 +76,7 @@ func StartBroker(ctx context.Context, wg *sync.WaitGroup) *Broker {
 		MsgChan: make(chan model.Message, 1),
 	}
 
+	go b.collectMetrics(ctx)
 	go b.awaitMessages(ctx, wg)
 
 	return b

@@ -12,6 +12,7 @@ import (
 	"fergus.molloy.xyz/vfmp/core/tcp"
 	"fergus.molloy.xyz/vfmp/internal/broker"
 	"fergus.molloy.xyz/vfmp/internal/config"
+	"fergus.molloy.xyz/vfmp/internal/metrics"
 	"fergus.molloy.xyz/vfmp/internal/model"
 	"github.com/google/uuid"
 )
@@ -143,6 +144,7 @@ func (c *tcpClient) handleMessage(broker *broker.Broker, logger *slog.Logger, by
 		// for now just delete the message
 		c.mu.Lock()
 		delete(c.messages, msg.CorrelationID)
+		metrics.MsgDlq.Inc()
 		c.mu.Unlock()
 	default:
 		logger.Error("unknown message type")
@@ -162,6 +164,7 @@ func (c *tcpClient) nack(ctx context.Context, l *slog.Logger, broker *broker.Bro
 	// return message to end of queue
 	select {
 	case broker.MsgChan <- m:
+		metrics.MsgNck.Inc()
 		c.mu.Unlock()
 	case <-ctx.Done():
 		c.mu.Unlock()
@@ -173,6 +176,7 @@ func (c *tcpClient) ack(l *slog.Logger, correlationID uuid.UUID) {
 	c.mu.Lock()
 	delete(c.messages, correlationID)
 	l.Debug("acked message", "correlationID", correlationID)
+	metrics.MsgAck.Inc()
 	c.mu.Unlock()
 }
 

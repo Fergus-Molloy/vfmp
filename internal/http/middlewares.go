@@ -1,10 +1,12 @@
 package http
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
+	"fergus.molloy.xyz/vfmp/internal/metrics"
 	"github.com/google/uuid"
 )
 
@@ -30,8 +32,13 @@ func logRequest(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 
+		d := time.Since(start)
+
 		logger := slog.With(slog.GroupAttrs("request", getRequestAttrs(r)...))
-		logger.Info("handled request", "latency", time.Since(start))
+
+		us := float64(d.Microseconds()) / float64(1_000_000)
+		metrics.HTTPLatencySec.WithLabelValues(r.Method, r.URL.Path).Observe(us)
+		logger.Info("handled request", "latency_secs", fmt.Sprintf("%vs", us))
 	})
 }
 
