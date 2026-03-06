@@ -110,6 +110,9 @@ func main() {
 			if i < len(responseSequence)-1 {
 				rdy := fmt.Appendf(nil, "RDY|%s", *topic)
 				c.Write <- rdy
+			} else {
+				// Give the server time to process the last ACK/NCK/DLQ before disconnecting
+				time.Sleep(100 * time.Millisecond)
 			}
 			cancel()
 		}

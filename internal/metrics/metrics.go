@@ -56,8 +56,8 @@ func RegisterMetrics() {
 	})
 
 	HTTPCount = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "vfmp_msg_dlq_count_total",
-		Help: "The total number of messages received",
+		Name: "vfmp_http_request_count_total",
+		Help: "The total number of HTTP requests received",
 	}, []string{"type"})
 	HTTPLatencySec = promauto.NewSummaryVec(prometheus.SummaryOpts{
 		Name: "http_req_latency_seconds",
