@@ -60,6 +60,9 @@ client config="": (build "client")
 cli *args="test": (build "cli")
 	./bin/cli localhost:9090 {{args}}
 
+producer *args="": (build "producer")
+	./bin/producer {{args}}
+
 [script]
 docker +tags="":
 	docker build -f deploy/Dockerfile --build-arg VERSION={{version}} -t vfmp:latest .

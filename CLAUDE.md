@@ -60,7 +60,15 @@ just stop                # Stops background server (pkill vfmp)
 ```bash
 just cli [args]          # Runs CLI tool (default: localhost:9090 test)
 just client [config]     # Runs TCP client (default: localhost:9090 test)
+just producer [args]     # Runs test producer (see flags below)
 ```
+
+Producer flags:
+- `-addr` - VFMP server address (default: http://localhost:8080)
+- `-topics` - Number of topics to populate (default: 1)
+- `-messages` - Total messages to generate (0 for infinite, default: 0)
+- `-rate` - Messages per second (0 for unlimited, default: 0)
+- `-size` - Message size in bytes (default: 1024)
 
 ### Docker & Deployment
 ```bash
@@ -81,6 +89,7 @@ just version             # Shows version from git tags (format: v[0-9].[0-9].[0-
 - `cmd/vfmp/main.go` - Main server entry point
 - `cmd/cli/main.go` - CLI tool for interacting with server
 - `cmd/client/main.go` - TCP client for consuming messages
+- `cmd/producer/main.go` - Test producer for generating load on multiple topics
 
 **Internal Packages** (`internal/`):
 - `broker/` - Message broker managing topics and routing messages to queues

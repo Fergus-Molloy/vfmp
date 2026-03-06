@@ -150,3 +150,86 @@ Supported response types are:
 ```bash
 ./bin/cli -topic=$TOPIC -sequence=ACK,NCK,DLQ # ACK first message, NCK second message, DLQ final message
 ```
+
+# Producing Test Messages
+
+The producer tool is used for load testing and generating test data. It can publish messages to multiple topics at configurable rates. Always rebuild the producer before running it using `just build producer`.
+
+## Flags
+
+The producer binary located at `./bin/producer` has several flags for controlling message generation:
+
+- `-addr` - VFMP server HTTP address, defaults to `http://localhost:8080`
+- `-topics` - Number of topics to populate with messages, defaults to `1`
+- `-messages` - Total number of messages to generate, defaults to `0` (infinite)
+- `-rate` - Messages per second to generate, defaults to `0` (unlimited)
+- `-size` - Size of each message in bytes, defaults to `1024` (1 KiB)
+
+## Topic Naming
+
+The producer automatically generates human-readable topic names using adjective-noun combinations (e.g., "fast-queue", "bright-cache", "slow-stream"). You don't need to specify topic names manually.
+
+## Message Content
+
+Messages contain random ASCII printable characters. The size can be configured with the `-size` flag.
+
+## Operation Modes
+
+### Finite Mode
+Generate an exact number of messages and then stop. Uses multiple workers for faster generation.
+
+```bash
+# Generate 1000 messages across 5 topics
+just producer -topics 5 -messages 1000
+
+# Generate 100 small messages on 2 topics
+just producer -topics 2 -messages 100 -size 512
+```
+
+### Rate-Limited Mode
+Generate messages continuously at a specified rate until manually stopped (Ctrl+C).
+
+```bash
+# Generate 100 messages per second across 3 topics
+just producer -topics 3 -rate 100
+
+# Generate 10 messages per second on a single topic
+just producer -rate 10
+```
+
+### Unlimited Mode
+Generate messages as fast as possible until manually stopped (Ctrl+C).
+
+```bash
+# Maximum rate across 10 topics
+just producer -topics 10
+
+# Maximum rate with larger messages
+just producer -topics 5 -size 4096
+```
+
+## Monitoring
+
+The producer prints statistics every 5 seconds showing:
+- Total messages sent
+- Total errors encountered
+- Elapsed time
+- Current throughput (messages per second)
+
+A final statistics report is printed when the producer stops.
+
+## Shutdown
+
+The producer handles shutdown signals (Ctrl+C, SIGTERM) gracefully:
+1. Stops accepting new messages
+2. Waits for in-flight HTTP requests to complete
+3. Prints final statistics
+4. Exits cleanly
+
+To stop a running producer, press Ctrl+C or send SIGTERM:
+```bash
+# If running in foreground, press Ctrl+C
+
+# If running in background
+just stop  # or pkill producer
+```
