@@ -2,7 +2,7 @@
   description = "A very fast message processor";
 
   # Flake inputs
-  inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0"; # Stable Nixpkgs (use 0.1 for unstable)
+  inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1"; # Stable Nixpkgs (use 0.1 for unstable)
 
   # Flake outputs
   outputs =
