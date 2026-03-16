@@ -6,7 +6,12 @@ on:
       - 'v*'
     branches:
       - main
-  pull_request:
+  workflow_dispatch:
+
+env:
+  REGISTRY: git.molloy.xyz
+  IMAGE_NAME: ${{ github.repository }}
+
 
 jobs:
   lint:
@@ -36,9 +41,6 @@ jobs:
       - uses: https://data.forgejo.org/actions/setup-go@v6
         with:
           go-version-file: go.mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Build
         run: go build -o vfmp ./cmd/vfmp/main.go
 
@@ -49,9 +51,6 @@ jobs:
       - uses: https://data.forgejo.org/actions/setup-go@v6
         with:
           go-version-file: go.mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Run unit tests
         run: go run gotest.tools/gotestsum@latest --format=testname ./internal/...
 
@@ -74,7 +73,9 @@ jobs:
           name: vfmp.log
           path: vfmp.log
 
-  tag:
+  build-and-push-image:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
+    name: Build Docker Image
     runs-on: ubuntu-latest
     needs:
       - lint
@@ -83,8 +84,94 @@ jobs:
       - integration
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Calculate version
+        id: version
+        run: |
+          VERSION="$(git describe --match='v[0-9].[0-9].[0-9]' --tags "$FORGEJO_REF" || true)"
+          echo "$VERSION"
+          echo "version=$VERSION" >> $FORGEJO_OUTPUT
+
+      - uses: docker/metadata-action@v4
+        id: meta
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ !startsWith(github.ref_name, 'v') }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile
+          build-args: "VERSION=${{ steps.version.outputs.version }}"
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy-dev:
+    name: Deploy Dev
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: github.ref == 'refs/heads/main'
+    needs: [build-and-push-image]
+    steps:
+      - uses: actions/checkout@v6
       - name: Tag Commit
         run: |
           git tag -f dev ${{ github.sha }}
           git push origin dev --force
 
+      - name: Install kubectl
+        uses: https://github.com/Azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Deploy to Kubernetes
+        run: |
+          sed 's/placeholder-version/${{needs.build-and-push-image.outputs.version}}/' deploy/k8s/overlays/dev/kustomization.yml && cat deploy/k8s/overlays/dev/kustomization.yml
+          kubectl apply -k deploy/k8s/overlays/dev
+          kubectl rollout status deployment/vfmp -n dev --timeout=5m
+
+  deploy-prod:
+    name: Deploy Prod
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    needs: [build-and-push-image]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install kubectl
+        uses: https://github.com/Azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Deploy to Kubernetes
+        run: |
+          sed 's/placeholder-version/${{needs.build-and-push-image.outputs.version}}/' deploy/k8s/overlays/prod/kustomization.yml && cat deploy/k8s/overlays/prod/kustomization.yml
+          kubectl apply -k deploy/k8s/overlays/prod
+          kubectl rollout status deployment/vfmp -n prod --timeout=5m
