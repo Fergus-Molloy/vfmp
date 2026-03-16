@@ -27,14 +27,16 @@ var (
 // Human-readable topic name components
 var (
 	adjectives = []string{
-		"fast", "slow", "bright", "dark", "happy", "sad", "large", "small",
-		"hot", "cold", "new", "old", "good", "bad", "high", "low",
-		"quick", "loud", "quiet", "clean", "dirty", "empty", "full", "heavy",
+		"small",
+		// "fast", "slow", "bright", "dark", "happy", "sad", "large", "small",
+		// "hot", "cold", "new", "old", "good", "bad", "high", "low",
+		// "quick", "loud", "quiet", "clean", "dirty", "empty", "full", "heavy",
 	}
 	nouns = []string{
-		"queue", "stream", "pipe", "channel", "buffer", "cache", "store", "pool",
-		"stack", "heap", "tree", "graph", "list", "array", "table", "index",
-		"bucket", "shard", "partition", "segment", "block", "page", "frame", "slot",
+		"buffer",
+		// "queue", "stream", "pipe", "channel", "buffer", "cache", "store", "pool",
+		// "stack", "heap", "tree", "graph", "list", "array", "table", "index",
+		// "bucket", "shard", "partition", "segment", "block", "page", "frame", "slot",
 	}
 )
 
@@ -260,7 +262,7 @@ func main() {
 	}
 
 	// Wait for shutdown signal or completion
-	if infinite {
+	if *rate > 0 {
 		<-ctx.Done()
 		slog.Warn("shutdown signal received, stopping producer")
 	} else {

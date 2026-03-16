@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fergus.molloy.xyz/vfmp/core/messages"
 	"github.com/google/uuid"
 )
 
@@ -17,8 +16,4 @@ func NewMessage(msg []byte, topic string, correlationID uuid.UUID) Message {
 		CorrelationID: correlationID,
 		Data:          msg,
 	}
-}
-
-func (m Message) ToMsgMessage() messages.MsgMessage {
-	return messages.NewMsgMessage(m.Topic, m.CorrelationID, m.Data)
 }

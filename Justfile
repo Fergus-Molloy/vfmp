@@ -1,11 +1,19 @@
-set unstable
-
 default: build lint
 
 version := `git describe --tags --match='v[0-9].[0-9].[0-9]' HEAD 2>/dev/null || true`
 
 version:
 	@echo {{ version }}
+
+proto:
+	protoc \
+		--proto_path=proto \
+		--proto_path=/usr/include \
+		--go_out=gen \
+		--go_opt=paths=source_relative \
+		--go-grpc_out=gen \
+		--go-grpc_opt=paths=source_relative \
+		$(find proto -name '*.proto')
 
 lint:
 	golangci-lint run
@@ -35,8 +43,9 @@ integration *flags: build
 
 test: unit integration
 
-[script]
 run config="" *flags="-log-path logs/vfmp.log": build
+	#!/usr/bin/env bash
+
 	if [ -z "{{config}}" ]; then
 		./bin/vfmp {{flags}}
 	else
@@ -49,22 +58,18 @@ start config="": build
 stop:
 	pkill vfmp
 
-[script]
-client config="": (build "client")
-	if [ -z "{{config}}" ]; then
-		./bin/client localhost:9090 test
-	else
-		./bin/client -config "{{config}}"
-	fi
+client *args: (build "client")
+		./bin/client {{args}}
 
-cli *args="test": (build "cli")
-	./bin/cli localhost:9090 {{args}}
+cli *args="": (build "cli")
+	./bin/cli {{args}}
 
 producer *args="": (build "producer")
 	./bin/producer {{args}}
 
-[script]
 docker +tags="":
+	#!/usr/bin/env bash
+
 	docker build -f deploy/Dockerfile --build-arg VERSION={{version}} -t vfmp:latest .
 	docker tag vfmp:latest vfmp:{{version}}
 	for tag in {{tags}}; do

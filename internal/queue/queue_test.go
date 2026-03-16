@@ -56,13 +56,13 @@ func TestLengthIncrementsCorrectly(t *testing.T) {
 		t.Fatalf("queue has incorrect length, got: %d, want: %d", q.Len(), 2)
 	}
 
-	<-q.GetMsgChan()
+	_, _ = q.Dequeue(ctx)
 	time.Sleep(10 * time.Millisecond)
 	if q.Len() != 1 {
 		t.Fatalf("queue has incorrect length, got: %d, want: %d", q.Len(), 1)
 	}
 
-	<-q.GetMsgChan()
+	_, _ = q.Dequeue(ctx)
 	time.Sleep(10 * time.Millisecond)
 	if q.Len() != 0 {
 		t.Fatalf("queue has incorrect length, got: %d, want: %d", q.Len(), 0)

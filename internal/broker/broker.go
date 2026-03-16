@@ -82,9 +82,14 @@ func StartBroker(ctx context.Context, wg *sync.WaitGroup) *Broker {
 	return b
 }
 
-func (b *Broker) NotifyReady(ctx context.Context, topic string) <-chan model.Message {
+func (b *Broker) Dequeue(ctx context.Context, topic string) (model.Message, error) {
 	q := b.getOrCreateTopic(ctx, topic)
-	return q.GetMsgChan()
+	return q.Dequeue(ctx)
+}
+
+func (b *Broker) DequeueN(ctx context.Context, topic string, n int) []model.Message {
+	q := b.getOrCreateTopic(ctx, topic)
+	return q.DequeueN(n)
 }
 
 func (b *Broker) GetCount(topic string) int {

@@ -10,10 +10,10 @@ import (
 
 	"fergus.molloy.xyz/vfmp/internal/broker"
 	"fergus.molloy.xyz/vfmp/internal/config"
+	"fergus.molloy.xyz/vfmp/internal/grpc"
 	"fergus.molloy.xyz/vfmp/internal/http"
 	"fergus.molloy.xyz/vfmp/internal/logger"
 	"fergus.molloy.xyz/vfmp/internal/metrics"
-	"fergus.molloy.xyz/vfmp/internal/tcp"
 )
 
 func main() {
@@ -49,7 +49,7 @@ func main() {
 	metric := http.StartMetricServer(wg, config)
 
 	wg.Add(1)
-	tcpSrv := tcp.StartTCPServer(broker, signal, wg, config)
+	grpcSrv := grpc.StartGRPCServer(broker, signal, wg, config)
 
 	<-signal.Done()
 	slog.Warn("shutting down vfmp")
@@ -59,7 +59,19 @@ func main() {
 
 	go http.ShutdownServer(srv, shutdownCtx)
 	go http.ShutdownServer(metric, shutdownCtx)
-	(*tcpSrv).Close()
+
+	timeout, cancel := context.WithTimeout(context.Background(), config.ShutdownTimeout)
+	done := false
+	defer cancel()
+	go func() {
+		grpcSrv.GracefulStop()
+		done = true
+		cancel()
+	}()
+	<-timeout.Done()
+	if !done {
+		grpcSrv.Stop()
+	}
 
 	wg.Wait()
 	slog.Warn("shut down complete")

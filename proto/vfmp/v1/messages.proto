@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+package vfmp.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "fergus.molloy.xyz/vfmp/gen/vfmp/v1;vfmpv1";
+
+// MessageService provides topic-based message consumption with lease-based
+// at-least-once delivery. Messages streamed to a consumer are leased for a
+// fixed duration; they must be Ack'd before the lease expires or they are
+// automatically requeued for redelivery.
+service MessageService {
+  // Consume streams up to max_messages from a topic. The stream closes once
+  // all requested messages have been sent or no more messages are available.
+  // Each message carries a lease_token that must be used in subsequent
+  // Ack/Nck/Dlq calls.
+  rpc Consume(ConsumeRequest) returns (stream Message);
+
+  // Ack confirms successful processing. The message is permanently removed
+  // from the queue.
+  rpc Ack(AckRequest) returns (AckResponse);
+
+  // Nck signals failed processing. The message is immediately requeued and
+  // becomes available for redelivery to any consumer.
+  rpc Nck(NckRequest) returns (NckResponse);
+
+  // Dlq dead-letters the message, permanently discarding it without requeue.
+  rpc Dlq(DlqRequest) returns (DlqResponse);
+}
+
+// ConsumeRequest initiates a server-streaming consume call.
+message ConsumeRequest {
+  // The topic to consume from.
+  string topic = 1;
+
+  // Maximum number of messages to stream in this call. The server may send
+  // fewer if the queue is exhausted before max_messages is reached.
+  int32 max_messages = 2;
+}
+
+// Message is a single message delivered to a consumer.
+message Message {
+  // The topic this message belongs to.
+  string topic = 1;
+
+  // The application-level correlation ID assigned when the message was
+  // published (UUID string).
+  string correlation_id = 2;
+
+  // The raw message body.
+  bytes body = 3;
+
+  // Opaque token identifying this specific lease. Pass this in Ack/Nck/Dlq.
+  // A new token is generated on each lease, including redeliveries after
+  // timeout or Nck.
+  string lease_token = 4;
+
+  // When the message was originally published.
+  google.protobuf.Timestamp created_at = 5;
+
+  // When this lease expires. If Ack/Nck/Dlq is not received before this
+  // time, the server will requeue the message automatically.
+  google.protobuf.Timestamp lease_expires_at = 6;
+
+  // How many times this message has been delivered (starts at 1). Consumers
+  // can use this to detect repeated failures and decide to Dlq proactively.
+  int32 delivery_count = 7;
+}
+
+// AckRequest permanently removes a leased message from the queue.
+message AckRequest {
+  // The topic the message belongs to.
+  string topic = 1;
+
+  // The lease_token from the Message that was delivered.
+  string lease_token = 2;
+}
+
+message AckResponse {}
+
+// NckRequest immediately requeues a leased message for redelivery.
+message NckRequest {
+  // The topic the message belongs to.
+  string topic = 1;
+
+  // The lease_token from the Message that was delivered.
+  string lease_token = 2;
+}
+
+message NckResponse {}
+
+// DlqRequest permanently discards a leased message without requeue.
+message DlqRequest {
+  // The topic the message belongs to.
+  string topic = 1;
+
+  // The lease_token from the Message that was delivered.
+  string lease_token = 2;
+}
+
+message DlqResponse {}
