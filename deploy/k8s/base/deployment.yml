@@ -9,7 +9,7 @@ spec:
     spec:
       containers:
         - name: vfmp
-          image: git.molloy.xyz/fergus-molloy/vfmp:latest
+          image: git.molloy.xyz/fergus-molloy/vfmp
           imagePullPolicy: Always
           livenessProbe:
             httpGet:
