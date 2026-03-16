@@ -77,6 +77,8 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     name: Build Docker Image
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     needs:
       - lint
       - build
@@ -131,6 +133,7 @@ jobs:
       - uses: actions/checkout@v6
       - name: Tag Commit
         run: |
+          echo "tagging ${{ github.sha }} as dev"
           git tag -f dev ${{ github.sha }}
           git push origin dev --force
 

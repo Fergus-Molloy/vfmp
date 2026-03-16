@@ -9,10 +9,10 @@ namespace: dev
 images:
 - name: vfmp
   newName: git.molloy.xyz/fergus-molloy/vfmp
-  newTag: placeholder-version
+  newTag: v1.1.2-25-g757bbb6
 
 labels:
 - includeTemplates: true
   pairs:
     environment: dev
-    version: placeholder-version
+    version: v1.1.2-25-g757bbb6
