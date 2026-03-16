@@ -107,10 +107,9 @@ func consumeBatch(ctx context.Context, client vfmpv1.MessageServiceClient, topic
 			"body", string(msg.Body),
 		)
 
-		// TODO: when ack is implemented
-		// if err := ack(ctx, client, msg); err != nil {
-		// 	slog.Error("failed to ack message", "lease_token", msg.LeaseToken, "err", err)
-		// }
+		if err := ack(ctx, client, msg); err != nil {
+			slog.Error("failed to ack message", "lease_token", msg.LeaseToken, "err", err)
+		}
 	}
 }
 
