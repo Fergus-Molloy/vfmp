@@ -150,7 +150,14 @@ jobs:
 
       - name: Deploy to Kubernetes
         run: |
-          sed 's/placeholder-version/${{needs.build-and-push-image.outputs.version}}/' deploy/k8s/overlays/dev/kustomization.yml && cat deploy/k8s/overlays/dev/kustomization.yml
+          sed -i 's/placeholder-version/${{needs.build-and-push-image.outputs.version}}/' deploy/k8s/overlays/dev/kustomization.yml
+          echo "================"
+          echo "| Service Spec |"
+          echo "================"
+          kubectl kustomize deploy/k8s/overlays/dev
+          echo "================"
+          echo "| Deploying... |"
+          echo "================"
           kubectl apply -k deploy/k8s/overlays/dev
           kubectl rollout status deployment/vfmp -n dev --timeout=5m
 
