@@ -8,6 +8,8 @@ type Message struct {
 	Topic         string    `json:"topic"`
 	CorrelationID uuid.UUID `json:"correlationID"`
 	Data          []byte    `json:"data"`
+	LeaseID       string    `json:"leaseId"`
+	SendCount     int       `json:"sendCount"`
 }
 
 func NewMessage(msg []byte, topic string, correlationID uuid.UUID) Message {

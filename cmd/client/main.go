@@ -102,6 +102,7 @@ func consumeBatch(ctx context.Context, client vfmpv1.MessageServiceClient, topic
 		slog.Info("received message",
 			"topic", msg.Topic,
 			"correlation_id", msg.CorrelationId,
+			"lease_token", msg.LeaseToken,
 			"delivery_count", msg.DeliveryCount,
 			"body", string(msg.Body),
 		)

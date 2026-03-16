@@ -72,9 +72,9 @@ func (s *server) Consume(r *vfmpv1.ConsumeRequest, stream grpc.ServerStreamingSe
 		s.sendMu.Lock()
 		err := stream.Send(&vfmpv1.Message{
 			Topic:         r.Topic,
-			DeliveryCount: 0, //TODO
+			DeliveryCount: int32(msg.SendCount),
 			CorrelationId: msg.CorrelationID.String(),
-			LeaseToken:    "token", //TODO
+			LeaseToken:    msg.LeaseID,
 			Body:          msg.Data,
 		})
 		s.sendMu.Unlock()
@@ -90,17 +90,20 @@ func (s *server) Consume(r *vfmpv1.ConsumeRequest, stream grpc.ServerStreamingSe
 
 // Ack confirms successful processing. The message is permanently removed
 // from the queue.
-func (s *server) Ack(context.Context, *vfmpv1.AckRequest) (*vfmpv1.AckResponse, error) {
-	panic("todo")
+func (s *server) Ack(_ context.Context, r *vfmpv1.AckRequest) (*vfmpv1.AckResponse, error) {
+	s.broker.Ack(r.LeaseToken)
+	return &vfmpv1.AckResponse{}, nil
 }
 
 // Nck signals failed processing. The message is immediately requeued and
 // becomes available for redelivery to any consumer.
-func (s *server) Nck(context.Context, *vfmpv1.NckRequest) (*vfmpv1.NckResponse, error) {
-	panic("todo")
+func (s *server) Nck(_ context.Context, r *vfmpv1.NckRequest) (*vfmpv1.NckResponse, error) {
+	s.broker.Nack(r.LeaseToken)
+	return &vfmpv1.NckResponse{}, nil
 }
 
 // Dlq dead-letters the message, permanently discarding it without requeue.
-func (s *server) Dlq(context.Context, *vfmpv1.DlqRequest) (*vfmpv1.DlqResponse, error) {
-	panic("todo")
+func (s *server) Dlq(_ context.Context, r *vfmpv1.DlqRequest) (*vfmpv1.DlqResponse, error) {
+	s.broker.Dlq(r.LeaseToken)
+	return &vfmpv1.DlqResponse{}, nil
 }

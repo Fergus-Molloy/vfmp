@@ -45,6 +45,19 @@ func (q *Queue) Append(msg model.Message) {
 	}
 }
 
+// Prepend adds message to front of queue.
+func (q *Queue) Prepend(msg model.Message) {
+	q.mu.Lock()
+	q.list.PushFront(msg)
+	q.len.Add(1)
+	q.mu.Unlock()
+
+	select {
+	case q.notify <- struct{}{}:
+	default:
+	}
+}
+
 // Dequeue removes and returns the next message, blocking until one is available
 // or ctx is cancelled.
 func (q *Queue) Dequeue(ctx context.Context) (model.Message, error) {
