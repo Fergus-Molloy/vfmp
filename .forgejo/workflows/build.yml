@@ -23,13 +23,16 @@ env:
 
 jobs:
   lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        name: Checkout repo
       - uses: https://data.forgejo.org/actions/setup-go@v6
+        name: Setup go
         with:
           go-version-file: go.mod
-      - name: gofmt
+      - name: Check formatting
         run: |
           unformatted="$(gofmt -l -e .)"
           if [ -n "$unformatted" ]; then
@@ -37,36 +40,45 @@ jobs:
             echo "$unformatted"
             exit 1
           fi
-      - name: golangci-lint
+      - name: Check lints
         uses: https://github.com/golangci/golangci-lint-action@v9
         with:
           version: v2.8
 
   build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        name: Checkout repo
       - uses: https://data.forgejo.org/actions/setup-go@v6
+        name: Setup go
         with:
           go-version-file: go.mod
       - name: Build
         run: go build -o vfmp ./cmd/vfmp/main.go
 
   unit:
+    name: Unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        name: Checkout repo
       - uses: https://data.forgejo.org/actions/setup-go@v6
+        name: Setup go
         with:
           go-version-file: go.mod
       - name: Run unit tests
         run: go run gotest.tools/gotestsum@latest --format=testname ./internal/...
 
   integration:
+    name: Integration tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        name: Checkout repo
       - uses: https://data.forgejo.org/actions/setup-go@v6
+        name: Setup go
         with:
           go-version-file: go.mod
       - name: Run integration tests
@@ -76,14 +88,15 @@ jobs:
           sleep 1
           go run gotest.tools/gotestsum@latest --format=testname ./tests/... -config "../config.test.yml"
       - uses: actions/upload-artifact@v3
+        name: Upload logs
         if: failure()
         with:
           name: vfmp.log
           path: vfmp.log
 
   build-and-push-image:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     name: Build Docker Image
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -94,9 +107,11 @@ jobs:
       - integration
     steps:
       - uses: actions/checkout@v6
+        name: Checkout repo
         with:
           fetch-depth: 0
       - uses: docker/login-action@v3
+        name: Login to registry
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ vars.DOCKER_USERNAME }}
@@ -110,6 +125,7 @@ jobs:
           echo "version=$VERSION" >> $FORGEJO_OUTPUT
 
       - uses: docker/metadata-action@v4
+        name: Generate image metadata
         id: meta
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
@@ -119,6 +135,7 @@ jobs:
             type=raw,value=${{ steps.version.outputs.version }},enable=${{ !startsWith(github.ref_name, 'v') }}
 
       - uses: docker/setup-buildx-action@v3
+        name: Setup buildx
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -139,6 +156,7 @@ jobs:
     needs: [build-and-push-image]
     steps:
       - uses: actions/checkout@v6
+        name: Checkout repo
       - name: Tag Commit
         run: |
           echo "tagging ${{ github.sha }} as dev"
@@ -176,6 +194,7 @@ jobs:
     needs: [build-and-push-image]
     steps:
       - uses: actions/checkout@v6
+        name: Checkout repo
 
       - name: Tag Commit
         run: |
